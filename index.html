@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>Evelyn's Feed the Snake V2.1</title>
+  <title>Evelyn's Feed the Snake V2.2</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <main class="game" id="game">
     <section class="top-shell">
-      <div class="brand-ribbon">Version 2.1</div><h1>💖 Evelyn's Feed the Snake 💖</h1>
+      <div class="header-row"><div class="avatar-badge">👧<small>Hi Evelyn! 💖</small></div><h1><span>Evelyn’s</span><strong>Feed the Snake</strong></h1><div class="header-buttons"><button type="button" aria-label="Music">🎵</button><button type="button" aria-label="Sound">🔊</button><button type="button" aria-label="Settings">⚙️</button></div></div>
 
       <section class="hud">
         <div class="hud-card">
@@ -36,10 +36,7 @@
     </section>
 
     <section class="playfield" id="playfield">
-      <div class="top-action-icons" aria-hidden="true">
-        <span>🏆</span>
-        <span>⭐</span>
-      </div>
+
       <div class="sky-lights"></div>
       <div class="blossoms"></div>
 
@@ -88,6 +85,13 @@
       <div class="status" id="status">Press Start Game to begin!</div>
       <button class="mobile-settings-btn" id="mobileSettingsBtn" type="button">⚙ Food Settings</button>
 
+      <section class="high-score-panel desktop-only">
+        <div class="trophy">🏆</div>
+        <b>High Score</b>
+        <strong id="highScoreCard">0</strong>
+        <button type="button">View Leaderboard</button>
+      </section>
+
       <section class="settings-panel" id="settingsPanel">
         <div class="tab">Food Settings</div>
         <button class="start-btn" id="startBtn" type="button">Start Game</button>
@@ -110,6 +114,14 @@
       <div class="float-msg" id="floatMsg"></div>
       <div class="gold-alert" id="goldAlert">⭐ Golden Meat appeared! ⭐</div>
       <div class="mega" id="mega">🔥 MEGA FEAST! 🔥<br><span id="megaPts">+0 points</span></div>
+
+      <section class="bottom-help desktop-only">
+        <div>🎯 <b>Perfect Eat</b><span>Feed meat to score!</span></div>
+        <div>❌ <b>Wrong Eat</b><span>Avoid non-meat food!</span></div>
+        <div>⭐🥩 <b>Golden Meat</b><span>Every 20–30 seconds</span></div>
+        <div>🎉 <b>Mega Feast</b><span>Feeds all meat on screen</span></div>
+        <div>🌈 <b>Have Fun!</b><span>Beat your high score!</span></div>
+      </section>
 
       <section class="game-over" id="gameOver">
         <h2>Game Over</h2>
