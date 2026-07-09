@@ -670,3 +670,65 @@ body{
     display:none!important;
   }
 }
+
+
+/* ===== v2.2 Final Fixes ===== */
+
+/* Option A: clearer Food Settings block */
+.settings-readout strong{
+  display:grid !important;
+  grid-template-columns:auto auto !important;
+  justify-content:center !important;
+  align-items:center !important;
+  column-gap:8px !important;
+  row-gap:2px !important;
+  line-height:1.15 !important;
+  text-align:left !important;
+  white-space:normal !important;
+}
+
+.settings-readout .settings-line{
+  display:contents;
+}
+
+.settings-readout .settings-name{
+  font-weight:1000;
+}
+
+.settings-readout .settings-value{
+  font-weight:1000;
+}
+
+/* Emoji centering fix for iPhone Safari */
+.food{
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  line-height:1 !important;
+  text-align:center !important;
+}
+
+.food .food-emoji{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:100%;
+  height:100%;
+  line-height:1;
+  transform:translateY(1px);
+  font-size:inherit;
+}
+
+.food.golden .food-emoji{
+  transform:none;
+}
+
+/* Mobile version of Option A */
+@media(max-width:620px){
+  .settings-readout strong{
+    grid-template-columns:auto auto !important;
+    column-gap:5px !important;
+    row-gap:1px !important;
+    font-size:.66rem !important;
+  }
+}
