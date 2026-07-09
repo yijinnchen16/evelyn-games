@@ -1,12 +1,55 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
 <head>
-  <title>Evelyn's Games</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>Evelyn's Feed the Snake</title>
+<link rel="stylesheet" href="style.css" />
 </head>
-<body style="font-family:Arial;text-align:center;background:#ffd4e8;padding:60px;">
-  <h1>💖 Evelyn's Games 💖</h1>
-  <p>Website under construction.</p>
-  <p>🐍 Feed the Snake coming soon!</p>
+<body>
+<main class="app">
+  <header>
+    <h1>💖 Evelyn's Feed the Snake 💖</h1>
+    <section class="hud">
+      <div><span>Score</span><b id="score">0</b></div>
+      <div><span>High Score</span><b id="high">0</b></div>
+      <div><span>Perfect</span><b id="perfect">0</b></div>
+      <div><span>Wrong</span><b id="wrong">0 / 3</b></div>
+      <div class="settings"><span>Food Settings</span><b id="settingsText">🚲 Speed: Medium · 🌸 Amount: Medium</b></div>
+    </section>
+  </header>
+
+  <section class="game" id="game">
+    <div class="snake" id="snake">
+      <div class="tail"></div>
+      <div class="seg s7"></div><div class="seg s6"></div><div class="seg s5"></div><div class="seg s4"></div><div class="seg s3"></div><div class="seg s2"></div><div class="seg s1"></div>
+      <div class="head" id="head">
+        <i class="spot a"></i><i class="spot b"></i><i class="spot c"></i>
+        <i class="eye l"></i><i class="eye r"></i>
+        <i class="cheek l"></i><i class="cheek r"></i>
+        <i class="mouth"></i>
+      </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+    <div class="mega" id="mega">🔥 MEGA FEAST! 🔥<small id="megaPts">+0 points</small></div>
+    <div class="goldAlert" id="goldAlert">⭐ Golden Meat appeared! ⭐</div>
+    <div class="status" id="status">Press Start Game to begin!</div>
+
+    <section class="controls">
+      <strong>Food Settings</strong>
+      <button id="start" type="button">Start Game</button>
+      <label>Food Speed <input id="speed" type="range" min="1" max="10" value="5" /></label>
+      <label>Food Amount <input id="amount" type="range" min="1" max="10" value="5" /></label>
+    </section>
+
+    <section class="gameOver" id="gameOver">
+      <h2>Game Over</h2>
+      <p id="finalScore">Final score: 0</p>
+      <button id="again" type="button">Play Again</button>
+    </section>
+  </section>
+</main>
+<script src="game.js"></script>
 </body>
 </html>
-<!-- GitHub Pages deployment -->
