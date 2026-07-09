@@ -30,3 +30,31 @@
     box-shadow:0 1px 0 rgba(201,30,114,.25) !important;
   }
 }
+
+
+/* ===== v2.0.2 Mobile Settings UX ===== */
+@media (max-width:620px){
+  .mobile-settings-btn{
+    width:auto !important;
+    min-width:96px;
+    padding:10px 16px !important;
+    border-radius:999px !important;
+  }
+
+  .game.settings-open .mobile-settings-btn{
+    opacity:0 !important;
+    visibility:hidden !important;
+    pointer-events:none !important;
+  }
+
+  .settings-panel{
+    transition:transform .25s ease,opacity .25s ease !important;
+  }
+
+  .close-settings{
+    display:block !important;
+    width:100% !important;
+    margin-top:6px !important;
+    font-weight:900;
+  }
+}
