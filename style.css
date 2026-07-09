@@ -58,3 +58,169 @@
     font-weight:900;
   }
 }
+
+
+/* ===== v2.1 Visual Polish Release ===== */
+body{
+  background:
+    radial-gradient(circle at 18% 8%, rgba(255,255,255,.55), transparent 16%),
+    radial-gradient(circle at 85% 12%, rgba(255,255,255,.35), transparent 18%),
+    linear-gradient(180deg,#ffd7ec 0%,#ff9bd5 42%,#ff66bb 100%) !important;
+}
+
+.brand-ribbon{
+  width:max-content;
+  margin:0 auto 3px;
+  padding:4px 14px;
+  border-radius:999px;
+  background:rgba(255,255,255,.72);
+  color:#ef3f92;
+  font-weight:900;
+  font-size:.78rem;
+  box-shadow:0 4px 10px rgba(124,20,81,.14);
+}
+
+.hud-card{
+  background:
+    linear-gradient(180deg,rgba(255,255,255,.88),rgba(255,255,255,.68)) !important;
+  backdrop-filter: blur(6px);
+}
+
+.playfield{
+  background:
+    radial-gradient(circle at 50% 8%, rgba(255,255,255,.46), transparent 18%),
+    radial-gradient(circle at 22% 35%, rgba(255,218,241,.55), transparent 25%),
+    radial-gradient(circle at 78% 40%, rgba(255,255,255,.32), transparent 24%),
+    linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,.06)) !important;
+}
+
+.top-action-icons{
+  position:absolute;
+  top:18px;
+  left:18px;
+  display:flex;
+  gap:10px;
+  z-index:21;
+  pointer-events:none;
+}
+
+.top-action-icons span{
+  width:48px;
+  height:48px;
+  display:grid;
+  place-items:center;
+  border-radius:50%;
+  background:linear-gradient(180deg,#ffffff,#ffd7ec);
+  color:#ef3f92;
+  font-size:24px;
+  box-shadow:0 5px 0 rgba(201,30,114,.32),0 8px 16px rgba(124,20,81,.14);
+  border:3px solid rgba(255,255,255,.75);
+}
+
+.sky-lights:before,
+.sky-lights:after{
+  width:190px !important;
+  opacity:.85 !important;
+}
+
+.info-card,
+.settings-panel{
+  background:
+    linear-gradient(180deg,rgba(255,255,255,.9),rgba(255,255,255,.7)) !important;
+  backdrop-filter: blur(7px);
+}
+
+.snake-wrap{
+  filter:drop-shadow(0 14px 16px rgba(124,20,81,.18));
+}
+
+.head{
+  background:
+    radial-gradient(circle at 50% 18%, rgba(255,255,255,.5), transparent 22%),
+    linear-gradient(180deg,#ffb7e1,#ef5aa8) !important;
+}
+
+.body,
+.tail{
+  background:
+    radial-gradient(circle at 50% 18%, rgba(255,255,255,.48), transparent 25%),
+    linear-gradient(180deg,#ff9fd9,#ea4fa1) !important;
+}
+
+.food{
+  border:3px solid rgba(255,255,255,.55);
+  background:
+    radial-gradient(circle at 36% 26%,rgba(255,255,255,1),rgba(255,255,255,.88) 52%,rgba(255,231,247,.9)) !important;
+}
+
+.food:after{
+  content:"";
+  position:absolute;
+  inset:-8px;
+  border-radius:50%;
+  border:2px solid rgba(255,255,255,.35);
+  opacity:.75;
+  pointer-events:none;
+}
+
+.food.golden:after{
+  display:none;
+}
+
+.status{
+  background:linear-gradient(180deg,rgba(255,255,255,.92),rgba(255,255,255,.74)) !important;
+  border:3px solid rgba(255,255,255,.7);
+}
+
+.mobile-settings-btn{
+  box-shadow:0 5px 0 rgba(201,30,114,.32),0 8px 16px rgba(124,20,81,.18) !important;
+}
+
+/* Slightly clearer floating food beams for approved concept feel */
+.food:not(.golden):before{
+  inset:-42px 10px !important;
+  background:linear-gradient(180deg,rgba(255,255,255,.58),rgba(255,255,255,0)) !important;
+}
+
+/* v2.1 mobile polish */
+@media(max-width:620px){
+  .brand-ribbon{
+    display:none;
+  }
+
+  .top-action-icons{
+    top:8px;
+    left:8px;
+    gap:6px;
+  }
+
+  .top-action-icons span{
+    width:34px;
+    height:34px;
+    font-size:18px;
+    border-width:2px;
+  }
+
+  .hud-card{
+    box-shadow:0 3px 0 rgba(201,30,114,.32),0 6px 10px rgba(124,20,81,.16) !important;
+  }
+
+  .snake-wrap{
+    filter:drop-shadow(0 10px 10px rgba(124,20,81,.15));
+  }
+
+  .status{
+    border-width:2px;
+  }
+
+  .mobile-settings-btn{
+    min-width:82px !important;
+    padding:8px 13px !important;
+    font-size:.82rem;
+  }
+
+  .settings-panel{
+    max-height:46vh;
+    overflow:hidden;
+  }
+}
