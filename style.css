@@ -732,3 +732,268 @@ body{
     font-size:.66rem !important;
   }
 }
+
+
+/* ===== v2.3 Clean Play Area + Pause Modals ===== */
+
+/* Remove permanent desktop blockers */
+.info-card,
+.high-score-panel,
+.bottom-help{
+  display:none !important;
+}
+
+/* Use the mobile-style collapsible settings UX for all screen sizes */
+.mobile-settings-btn{
+  display:block !important;
+  position:absolute;
+  right:24px;
+  bottom:24px;
+  left:auto;
+  transform:none;
+  z-index:30;
+  border:0;
+  border-radius:999px;
+  background:linear-gradient(180deg,rgba(255,255,255,.96),rgba(255,237,247,.88));
+  color:#ef3f92;
+  padding:12px 18px;
+  font-weight:1000;
+  box-shadow:0 6px 0 rgba(201,30,114,.28),0 10px 18px rgba(124,20,81,.18);
+  cursor:pointer;
+  touch-action:manipulation;
+}
+
+.game.settings-open .mobile-settings-btn{
+  opacity:0 !important;
+  visibility:hidden !important;
+  pointer-events:none !important;
+}
+
+.settings-panel{
+  left:50% !important;
+  right:auto !important;
+  bottom:18px !important;
+  transform:translate(-50%, calc(100% + 24px)) !important;
+  opacity:0;
+  pointer-events:none;
+  width:min(720px, calc(100% - 48px)) !important;
+  min-width:0 !important;
+  display:grid !important;
+  grid-template-columns:1fr 1fr !important;
+  gap:10px 16px !important;
+  transition:transform .25s ease, opacity .25s ease !important;
+  z-index:34 !important;
+}
+
+.game:not(.playing) .settings-panel,
+.game.settings-open .settings-panel{
+  transform:translate(-50%, 0) !important;
+  opacity:1 !important;
+  pointer-events:auto !important;
+}
+
+.settings-panel .tab{
+  display:block !important;
+  position:absolute !important;
+  top:-20px !important;
+  left:50% !important;
+  transform:translateX(-50%) !important;
+  width:260px !important;
+}
+
+.settings-panel .start-btn{
+  grid-column:1/-1 !important;
+  width:min(520px,100%) !important;
+  justify-self:center !important;
+}
+
+.close-settings{
+  display:block !important;
+  grid-column:1/-1 !important;
+  width:min(420px,100%) !important;
+  justify-self:center !important;
+  border:0 !important;
+  border-radius:15px !important;
+  background:#fff !important;
+  color:#ef3f92 !important;
+  font-weight:1000 !important;
+  padding:10px 12px !important;
+  box-shadow:0 4px 0 rgba(201,30,114,.25) !important;
+}
+
+.game:not(.playing) .close-settings{
+  display:none !important;
+}
+
+.status{
+  bottom:28px !important;
+  pointer-events:none;
+}
+
+.game.settings-open .status,
+.game:not(.playing) .status{
+  bottom:190px !important;
+}
+
+.quick-buttons{
+  position:absolute;
+  left:24px;
+  bottom:24px;
+  display:flex;
+  gap:10px;
+  z-index:31;
+}
+
+.quick-buttons button{
+  border:0;
+  border-radius:18px;
+  min-width:76px;
+  padding:10px 12px;
+  background:linear-gradient(180deg,rgba(255,255,255,.96),rgba(255,237,247,.86));
+  color:#ef3f92;
+  font-weight:1000;
+  box-shadow:0 6px 0 rgba(201,30,114,.28),0 10px 18px rgba(124,20,81,.18);
+  display:grid;
+  gap:2px;
+  place-items:center;
+  cursor:pointer;
+  touch-action:manipulation;
+}
+
+.quick-buttons button span{
+  font-size:.74rem;
+}
+
+.info-modal{
+  position:absolute;
+  inset:0;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:120;
+  background:rgba(231,55,145,.28);
+  backdrop-filter:blur(4px);
+  padding:18px;
+}
+
+.info-modal.show{
+  display:flex;
+}
+
+.info-modal-card{
+  position:relative;
+  width:min(520px, calc(100% - 20px));
+  max-height:min(78vh, 680px);
+  overflow:auto;
+  border:5px solid rgba(255,255,255,.85);
+  border-radius:28px;
+  background:linear-gradient(180deg,rgba(255,255,255,.96),rgba(255,237,247,.94));
+  color:#5d234d;
+  padding:24px;
+  text-align:left;
+  box-shadow:0 10px 0 rgba(201,30,114,.28),0 18px 36px rgba(124,20,81,.25);
+  font-weight:900;
+}
+
+.info-modal-card h2{
+  margin:0 0 14px;
+  color:#ef3f92;
+  text-align:center;
+  font-size:clamp(1.6rem,4vw,2.4rem);
+}
+
+.info-modal-card p{
+  line-height:1.4;
+}
+
+.info-modal-card ul{
+  padding-left:22px;
+  line-height:1.55;
+}
+
+.modal-close{
+  position:absolute;
+  top:10px;
+  right:12px;
+  width:38px;
+  height:38px;
+  border:0;
+  border-radius:50%;
+  background:#ef3f92;
+  color:white;
+  font-size:26px;
+  font-weight:1000;
+  box-shadow:0 4px 0 #c91e72;
+  cursor:pointer;
+}
+
+@media(max-width:620px){
+  .quick-buttons{
+    left:8px;
+    top:8px;
+    bottom:auto;
+    gap:6px;
+  }
+
+  .quick-buttons button{
+    min-width:42px;
+    width:42px;
+    height:42px;
+    border-radius:50%;
+    padding:0;
+    font-size:18px;
+  }
+
+  .quick-buttons button span{
+    display:none;
+  }
+
+  .mobile-settings-btn{
+    right:auto;
+    left:50%;
+    bottom:12px;
+    transform:translateX(-50%);
+    min-width:82px !important;
+    padding:8px 13px !important;
+    font-size:.82rem;
+  }
+
+  .settings-panel{
+    left:8px !important;
+    right:8px !important;
+    bottom:8px !important;
+    width:auto !important;
+    transform:translateY(calc(100% + 24px)) !important;
+    grid-template-columns:1fr 1fr !important;
+    padding:10px !important;
+  }
+
+  .game:not(.playing) .settings-panel,
+  .game.settings-open .settings-panel{
+    transform:translateY(0) !important;
+  }
+
+  .settings-panel .tab{
+    display:none !important;
+  }
+
+  .status{
+    bottom:62px !important;
+  }
+
+  .game.settings-open .status,
+  .game:not(.playing) .status{
+    bottom:145px !important;
+  }
+
+  .info-modal{
+    padding:10px;
+  }
+
+  .info-modal-card{
+    width:calc(100% - 8px);
+    max-height:76vh;
+    padding:20px 16px;
+    border-radius:22px;
+  }
+}

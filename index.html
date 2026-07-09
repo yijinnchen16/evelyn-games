@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>Evelyn's Feed the Snake V2.2</title>
+  <title>Evelyn's Feed the Snake V2.3</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -36,6 +36,19 @@
     </section>
 
     <section class="playfield" id="playfield">
+      <div class="quick-buttons" id="quickButtons">
+        <button type="button" data-modal="how">❔<span>How</span></button>
+        <button type="button" data-modal="power">⭐<span>Power</span></button>
+        <button type="button" data-modal="score">🏆<span>Score</span></button>
+      </div>
+
+      <section class="info-modal" id="infoModal" aria-hidden="true">
+        <div class="info-modal-card">
+          <button class="modal-close" id="modalClose" type="button">×</button>
+          <div id="modalContent"></div>
+        </div>
+      </section>
+
 
       <div class="sky-lights"></div>
       <div class="blossoms"></div>
