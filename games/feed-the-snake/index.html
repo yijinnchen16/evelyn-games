@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Evelyn's Feed the Snake V2.3</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="game" id="game">
+    <section class="top-shell">
+      <div class="header-row"><div class="avatar-badge">👧<small>Hi Evelyn! 💖</small></div><h1><span>Evelyn’s</span><strong>Feed the Snake</strong></h1><div class="header-buttons"><button type="button" aria-label="Music">🎵</button><button type="button" aria-label="Sound">🔊</button><button type="button" aria-label="Settings">⚙️</button></div></div>
+
+      <section class="hud">
+        <div class="hud-card">
+          <span>Score</span>
+          <strong id="score">0</strong>
+        </div>
+        <div class="hud-card">
+          <span>High Score</span>
+          <strong id="highScore">0</strong>
+        </div>
+        <div class="hud-card">
+          <span>Perfect Eats</span>
+          <strong id="perfect">0</strong>
+        </div>
+        <div class="hud-card">
+          <span>Wrong Eats</span>
+          <strong id="wrong">0 / 3</strong>
+        </div>
+        <div class="hud-card settings-readout">
+          <span>Food Settings</span>
+          <strong id="settingsReadout">🚲 Speed: Medium · 🌸 Amount: Medium</strong>
+        </div>
+      </section>
+    </section>
+
+    <section class="playfield" id="playfield">
+      <div class="quick-buttons" id="quickButtons">
+        <button type="button" data-modal="how">❔<span>How</span></button>
+        <button type="button" data-modal="power">⭐<span>Power</span></button>
+        <button type="button" data-modal="score">🏆<span>Score</span></button>
+      </div>
+
+      <section class="info-modal" id="infoModal" aria-hidden="true">
+        <div class="info-modal-card">
+          <button class="modal-close" id="modalClose" type="button">×</button>
+          <div id="modalContent"></div>
+        </div>
+      </section>
+
+
+      <div class="sky-lights"></div>
+      <div class="blossoms"></div>
+
+      <section class="info-card left-card desktop-only">
+        <div class="tab">How to Play</div>
+        <p><b>1.</b> Hold a food item.</p>
+        <p><b>2.</b> Drag it to the snake's head.</p>
+        <p><b>3.</b> Release to feed.</p>
+        <div class="mini-rule">🥩 Meat = <b class="good">+10</b><br>🍎 Wrong food = <b class="bad">-10</b><br>💔 3 wrong eats = Game Over</div>
+      </section>
+
+      <section class="info-card right-card desktop-only">
+        <div class="tab">Power Up</div>
+        <div class="gold-preview">⭐🥩⭐</div>
+        <p><b>Golden Meat</b> feeds all meat on screen.</p>
+        <div class="mini-rule">Appears every <b>20–30 seconds</b><br>🌈 Rainbow hearts<br>🎉 Mega Feast</div>
+      </section>
+
+      <section class="snake-stage">
+        <div class="speech desktop-only">Feed me meat! 💖</div>
+        <div class="snake-wrap" id="snakeWrap">
+          <div class="snake">
+            <div class="tail"></div>
+            <div class="body b7"></div>
+            <div class="body b6"></div>
+            <div class="body b5"></div>
+            <div class="body b4"></div>
+            <div class="body b3"></div>
+            <div class="body b2"></div>
+            <div class="body b1"></div>
+            <div class="head" id="snakeHead">
+              <div class="spot s1"></div>
+              <div class="spot s2"></div>
+              <div class="spot s3"></div>
+              <div class="eye left"></div>
+              <div class="eye right"></div>
+              <div class="cheek left"></div>
+              <div class="cheek right"></div>
+              <div class="mouth"></div>
+              <div class="tongue"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="status" id="status">Press Start Game to begin!</div>
+      <button class="mobile-settings-btn" id="mobileSettingsBtn" type="button">⚙ Food Settings</button>
+
+      <section class="high-score-panel desktop-only">
+        <div class="trophy">🏆</div>
+        <b>High Score</b>
+        <strong id="highScoreCard">0</strong>
+        <button type="button">View Leaderboard</button>
+      </section>
+
+      <section class="settings-panel" id="settingsPanel">
+        <div class="tab">Food Settings</div>
+        <button class="start-btn" id="startBtn" type="button">Start Game</button>
+
+        <label>
+          <span>Food Speed</span>
+          <input id="speed" type="range" min="1" max="10" value="5" />
+          <small><span>🐢 Slow</span><span>Medium</span><span>Fast 🐇</span></small>
+        </label>
+
+        <label>
+          <span>Food Amount</span>
+          <input id="amount" type="range" min="1" max="10" value="5" />
+          <small><span>Few</span><span>Medium</span><span>Many</span></small>
+        </label>
+
+        <button class="close-settings" id="closeSettings" type="button">⬇ Minimize Settings</button>
+      </section>
+
+      <div class="float-msg" id="floatMsg"></div>
+      <div class="gold-alert" id="goldAlert">⭐ Golden Meat appeared! ⭐</div>
+      <div class="mega" id="mega">🔥 MEGA FEAST! 🔥<br><span id="megaPts">+0 points</span></div>
+
+      <section class="bottom-help desktop-only">
+        <div>🎯 <b>Perfect Eat</b><span>Feed meat to score!</span></div>
+        <div>❌ <b>Wrong Eat</b><span>Avoid non-meat food!</span></div>
+        <div>⭐🥩 <b>Golden Meat</b><span>Every 20–30 seconds</span></div>
+        <div>🎉 <b>Mega Feast</b><span>Feeds all meat on screen</span></div>
+        <div>🌈 <b>Have Fun!</b><span>Beat your high score!</span></div>
+      </section>
+
+      <section class="game-over" id="gameOver">
+        <h2>Game Over</h2>
+        <p id="finalScore">Final score: 0</p>
+        <button class="start-btn" id="againBtn" type="button">Play Again</button>
+      </section>
+    </section>
+  </main>
+
+  <script src="game.js"></script>
+</body>
+</html>
