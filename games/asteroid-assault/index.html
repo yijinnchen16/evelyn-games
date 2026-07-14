@@ -112,7 +112,9 @@ const playerLevelThresholds=[0,750,2500];
 const playerLevelColors={
   1:{main:'#67e8ff',soft:'rgba(103,232,255,.55)',name:'AZURE'},
   2:{main:'#ffd95a',soft:'rgba(255,217,90,.55)',name:'GOLD'},
-  3:{main:'#ff5fe1',soft:'rgba(255,95,225,.55)',name:'MAGENTA'}
+  3:{main:'#ff5fe1',soft:'rgba(255,95,225,.55)',name:'MAGENTA'},
+  4:{main:'#4dffb8',soft:'rgba(77,255,184,.55)',name:'REGEN'},
+  5:{main:'#b98cff',soft:'rgba(185,140,255,.58)',name:'GUARDIAN'}
 };
 const keys={},bullets=[],enemyShots=[],particles=[],debris=[],powerups=[],missiles=[],blasts=[],bossMissiles=[],bossLasers=[],stars=[];
 const IMG={},sources={"nebula": "assets/nebula.png", "asteroid": "assets/asteroid.png", "missile": "assets/missile.png", "shield": "assets/shield.png", "robot": "assets/robot.png", "spaceship": "assets/spaceship.png", "hybrid": "assets/hybrid.png", "boss": "assets/boss.png"};
@@ -149,7 +151,7 @@ const modeNames={robot:'ROBOT',spaceship:'SPACESHIP',hybrid:'HYBRID'};
 const ship={
  x:130,y:300,speed:350,shield:3,maxShield:3,hitFlash:0,missileMode:0,
  fireTimer:0,missileTimer:0,mode:'hybrid',transforming:0,nextMode:null,
- blastTimer:5,invulnerable:0,shieldFlare:0,shieldAngle:0,shieldPulse:0
+ blastTimer:5,invulnerable:0,shieldFlare:0,shieldAngle:0,shieldPulse:0,regenDelay:0,regenGlow:0,defenseCooldown:10,defenseBeam:0,defenseTarget:null
 };
 const asteroid={x:0,y:0,r:105,hp:20,maxHp:20,shootTimer:1.6,phase:0,dead:false,respawn:0};
 const boss={
@@ -204,27 +206,36 @@ function finishTransform(){
  burst(ship.x,ship.y,42,320,'#71e9ff');
 }
 function playerDamageMultiplier(){
- return playerLevel===1?1:playerLevel===2?1.5:2.25;
+ return playerLevel===1?1:
+        playerLevel===2?1.5:
+        playerLevel===3?2.25:
+        playerLevel===4?2.75:3.25;
 }
 function updatePlayerLevel(){
  let next=score>=playerLevelThresholds[2]?3:score>=playerLevelThresholds[1]?2:1;
+ if(level>=15)next=Math.max(next,4);
+ if(level>=20)next=5;
  if(next!==playerLevel){
    playerLevel=next;
    burst(ship.x,ship.y,70,380,playerLevelColors[playerLevel].main);
    ship.invulnerable=Math.max(ship.invulnerable,1);
+   if(playerLevel>=4){ship.regenDelay=0;ship.regenGlow=1;}
+   if(playerLevel>=5){ship.defenseCooldown=2;}
  }
 }
 function restart(){
  elapsed=0;score=0;level=1;playerLevel=1;state='playing';ship.shield=3;ship.maxShield=3;ship.hitFlash=0;ship.missileMode=0;
- ship.mode='hybrid';ship.transforming=0;ship.nextMode=null;ship.blastTimer=5;ship.shieldFlare=0;ship.shieldPulse=0;transformBtn.innerHTML='MODE<br>HYBRID';
+ ship.mode='hybrid';ship.transforming=0;ship.nextMode=null;ship.blastTimer=5;ship.shieldFlare=0;ship.shieldPulse=0;ship.regenDelay=0;ship.regenGlow=0;ship.defenseCooldown=10;ship.defenseBeam=0;ship.defenseTarget=null;transformBtn.innerHTML='MODE<br>HYBRID';
  bullets.length=enemyShots.length=particles.length=debris.length=powerups.length=missiles.length=blasts.length=bossMissiles.length=bossLasers.length=0;
  boss.active=false;boss.defeated=false;boss.hp=boss.maxHp;boss.entry=0;boss.deathTimer=0;boss.deathStage=0;boss.deathPulse=0;boss.coreFlash=0;
  resetAsteroid();
 }
 function resetAsteroid(){
+ updatePlayerLevel();
  if(level===5){startBoss();return;}
  boss.active=false;
- asteroid.maxHp=20+(level-1)*6;asteroid.hp=asteroid.maxHp;asteroid.r=Math.max(75,105-(level-1)*2);
+ asteroid.maxHp=level<15 ? 20+(level-1)*6 : level<20 ? 104+(level-15)*5 : 129+(level-20)*4;
+ asteroid.hp=asteroid.maxHp;asteroid.r=Math.max(75,105-(level-1)*2);
  asteroid.dead=false;asteroid.shootTimer=Math.max(.75,1.8-level*.08);
 }
 function burst(x,y,n,s,c){for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,v=Math.random()*s;particles.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,life:.35+Math.random()*.75,max:1,size:1+Math.random()*4,c})}}
@@ -313,7 +324,9 @@ function asteroidHit(d,x,y){
 }
 function shipHit(sourceX=ship.x+120,sourceY=ship.y){
  if(ship.hitFlash>0||ship.invulnerable>0)return;
- ship.shield--;
+ ship.shield=Math.max(0,ship.shield-1);
+ ship.regenDelay=3;
+ ship.regenGlow=0;
  ship.hitFlash=1.1;
  ship.shieldFlare=.72;
  ship.shieldPulse=0;
@@ -322,6 +335,35 @@ function shipHit(sourceX=ship.x+120,sourceY=ship.y){
  const impactY=ship.y+Math.sin(ship.shieldAngle)*42;
  burst(impactX,impactY,30,320,'#70eaff');
  if(ship.shield<=0){state='gameover';burst(ship.x,ship.y,75,460,'#ff554f')}
+}
+function currentShipAssetLength(){
+ const compact=isCompactLandscape();
+ if(ship.mode==='spaceship')return compact?175:233;
+ if(ship.mode==='hybrid')return compact?149:199;
+ return compact?108:143;
+}
+function findDefenseThreat(){
+ const range=currentShipAssetLength();
+ let best=null,bestDist=Infinity;
+ for(const e of enemyShots){
+   if(e.dead)continue;
+   const d=Math.hypot(e.x-ship.x,e.y-ship.y);
+   if(d<=range&&d<bestDist){best=e;bestDist=d;}
+ }
+ for(const m of bossMissiles){
+   if(m.dead)continue;
+   const d=Math.hypot(m.x-ship.x,m.y-ship.y);
+   if(d<=range&&d<bestDist){best=m;bestDist=d;}
+ }
+ return best;
+}
+function fireDefenseLaser(target){
+ if(!target)return;
+ ship.defenseBeam=.22;
+ ship.defenseTarget={x:target.x,y:target.y};
+ target.dead=true;
+ burst(target.x,target.y,28,340,'#c6a2ff');
+ score+=25;updatePlayerLevel();
 }
 function hit(a,b,r){const dx=a.x-b.x,dy=a.y-b.y;return dx*dx+dy*dy<(a.r+r)*(a.r+r)}
 function trim(a){for(let i=a.length-1;i>=0;i--)if(a[i].dead||a[i].life<=0)a.splice(i,1)}
@@ -332,7 +374,27 @@ function update(dt){
  for(const p of particles){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=.985;p.vy*=.985;p.life-=dt}trim(particles);
  for(const d of debris){d.x+=d.vx*dt;d.y+=d.vy*dt;d.rot+=d.vr*dt;d.life-=dt}trim(debris);
  if(state!=='playing')return;
- elapsed+=dt;ship.hitFlash=Math.max(0,ship.hitFlash-dt);ship.invulnerable=Math.max(0,ship.invulnerable-dt);ship.missileMode=Math.max(0,ship.missileMode-dt);ship.shieldFlare=Math.max(0,ship.shieldFlare-dt);ship.shieldPulse+=dt;
+ elapsed+=dt;
+ ship.hitFlash=Math.max(0,ship.hitFlash-dt);
+ ship.invulnerable=Math.max(0,ship.invulnerable-dt);
+ ship.missileMode=Math.max(0,ship.missileMode-dt);
+ ship.shieldFlare=Math.max(0,ship.shieldFlare-dt);
+ ship.shieldPulse+=dt;
+ ship.regenDelay=Math.max(0,ship.regenDelay-dt);
+ ship.regenGlow=Math.max(0,ship.regenGlow-dt);
+ ship.defenseBeam=Math.max(0,ship.defenseBeam-dt);
+ if(playerLevel>=4&&ship.regenDelay<=0&&ship.shield<ship.maxShield){
+   ship.shield=Math.min(ship.maxShield,ship.shield+(ship.maxShield/20)*dt);
+   ship.regenGlow=.25;
+ }
+ if(playerLevel>=5){
+   ship.defenseCooldown-=dt;
+   if(ship.defenseCooldown<=0){
+     const threat=findDefenseThreat();
+     if(threat){fireDefenseLaser(threat);ship.defenseCooldown=10;}
+     else ship.defenseCooldown=0;
+   }
+ }
 
  if(ship.transforming>0){
    ship.transforming-=dt;
@@ -433,6 +495,10 @@ function update(dt){
  for(const q of blasts){q.x+=q.vx*dt;q.life-=dt;q.r+=18*dt;if(boss.active&&!boss.defeated&&hit(q,boss,boss.r*.9)){q.dead=true;bossHit(q.damage,q.x,q.y);burst(q.x,q.y,38,380,'#fff0a3')}else if(!asteroid.dead&&hit(q,asteroid,asteroid.r*.78)){q.dead=true;asteroidHit(q.damage,q.x,q.y);burst(q.x,q.y,38,380,'#fff0a3')}if(q.x>W+60)q.dead=true}trim(blasts);
  for(const m of missiles){if(!asteroid.dead){const a=Math.atan2(asteroid.y-m.y,asteroid.x-m.x);m.vx+=Math.cos(a)*420*dt;m.vy+=Math.sin(a)*420*dt}m.x+=m.vx*dt;m.y+=m.vy*dt;m.life-=dt;particles.push({x:m.x-8,y:m.y,vx:-80,vy:(Math.random()-.5)*35,life:.22,max:.22,size:2+Math.random()*2,c:'#ffcb59'});if(boss.active&&!boss.defeated&&hit({x:m.x,y:m.y,r:8},boss,boss.r*.9)){m.dead=true;bossHit(m.damage,m.x,m.y)}else if(!asteroid.dead&&hit({x:m.x,y:m.y,r:8},asteroid,asteroid.r*.82)){m.dead=true;asteroidHit(m.damage,m.x,m.y)}}trim(missiles);
 
+ if(playerLevel>=5&&ship.defenseCooldown<=0){
+   const threat=findDefenseThreat();
+   if(threat){fireDefenseLaser(threat);ship.defenseCooldown=10;}
+ }
  for(const e of enemyShots){e.x+=e.vx*dt;e.y+=e.vy*dt;e.rot+=dt*4;if(hit(e,ship,isCompactLandscape()?21:26)){e.dead=true;shipHit(e.x,e.y)}if(e.x<-30)e.dead=true}trim(enemyShots);
 
  for(const bm of bossMissiles){
@@ -496,13 +562,13 @@ function drawHud(){
    ctx.fillText('SHIELD',leftX+14,leftY+39);
 
    const sbw=104;
-   rr(leftX+72,leftY+27,sbw,13,4);
+   rr(leftX+72,leftY+27,sbw,13,6);
    ctx.fillStyle='rgba(255,255,255,.12)';ctx.fill();
-   rr(leftX+72,leftY+27,sbw*(ship.shield/ship.maxShield),13,4);
-   ctx.fillStyle='#09c8f5';ctx.fill();
+   rr(leftX+72,leftY+27,sbw*Math.max(0,ship.shield/ship.maxShield),13,6);
+   const sg=ctx.createLinearGradient(leftX+72,0,leftX+72+sbw,0);sg.addColorStop(0,'#56e8ff');sg.addColorStop(1,'#0aa8ff');ctx.fillStyle=sg;ctx.fill();
 
-   ctx.fillStyle='#fff';ctx.font='700 14px Arial';
-   ctx.fillText(`${ship.shield} / ${ship.maxShield}`,leftX+184,leftY+39);
+   ctx.fillStyle='#fff';ctx.font='700 13px Arial';
+   ctx.fillText(`${ship.shield.toFixed(1)} / ${ship.maxShield}`,leftX+184,leftY+39);
 
    ctx.font='700 11px Arial';
    ctx.fillText('SCORE',leftX+14,leftY+66);
@@ -519,7 +585,8 @@ function drawHud(){
 
    const pc=playerLevelColors[playerLevel];
    ctx.font='800 10px Arial';ctx.fillStyle=pc.main;
-   ctx.fillText(`P${playerLevel} · ${playerDamageMultiplier().toFixed(2)}× ATTACK`,centerX,58);
+   const compactAbility=playerLevel>=5?`GUARD ${Math.max(0,ship.defenseCooldown).toFixed(1)}s`:playerLevel>=4?(ship.regenDelay>0?`REGEN PAUSED ${ship.regenDelay.toFixed(1)}s`:'AUTO REGEN'):`${playerDamageMultiplier().toFixed(2)}× ATTACK`;
+   ctx.fillText(`P${playerLevel} · ${compactAbility}`,centerX,58);
 
    const perk=ship.mode==='robot'?'5 SHIELDS':ship.mode==='spaceship'?'RAPID FIRE':`BLAST ${Math.max(0,ship.blastTimer).toFixed(1)}s`;
    ctx.font='700 10px Arial';ctx.fillStyle='#ffe077';
@@ -560,8 +627,9 @@ function drawHud(){
  rr(16,14,300,96,5);ctx.fillStyle='rgba(4,5,5,.72)';ctx.fill();ctx.strokeStyle='#ffc51c';ctx.lineWidth=2;ctx.stroke();
  ctx.font='800 11px Arial';ctx.fillStyle='#ffd95a';ctx.fillText("JONAH & NOEL'S ASTEROID ASSAULT",36,28);
  ctx.font='700 14px Arial';ctx.fillStyle='#9eeeff';ctx.fillText('SHIELD',36,49);
- const bw=165;rr(112,36,bw,17,4);ctx.fillStyle='rgba(255,255,255,.12)';ctx.fill();rr(112,36,bw*(ship.shield/ship.maxShield),17,4);ctx.fillStyle='#09c8f5';ctx.fill();
- ctx.fillStyle='#fff';ctx.font='700 18px Arial';ctx.fillText(`${ship.shield} / ${ship.maxShield}`,286,51);
+ const bw=165;rr(112,36,bw,17,8);ctx.fillStyle='rgba(255,255,255,.12)';ctx.fill();rr(112,36,bw*Math.max(0,ship.shield/ship.maxShield),17,8);
+ const shieldGrad=ctx.createLinearGradient(112,0,112+bw,0);shieldGrad.addColorStop(0,'#56e8ff');shieldGrad.addColorStop(1,'#0aa8ff');ctx.fillStyle=shieldGrad;ctx.fill();
+ ctx.fillStyle='#fff';ctx.font='700 16px Arial';ctx.fillText(`${ship.shield.toFixed(1)} / ${ship.maxShield}`,286,51);
  ctx.font='700 13px Arial';ctx.fillText('SCORE',36,84);ctx.textAlign='right';ctx.fillText(String(score).padStart(7,'0'),287,84);ctx.textAlign='left';
 
  if(boss.active){
@@ -583,7 +651,8 @@ function drawHud(){
  ctx.fillText(perk,W/2,72);
  const pc=playerLevelColors[playerLevel];
  ctx.font='900 13px Arial';ctx.fillStyle=pc.main;ctx.shadowBlur=10;ctx.shadowColor=pc.main;
- ctx.fillText(`PLAYER LV.${playerLevel} · ${pc.name} · ${playerDamageMultiplier().toFixed(2)}× ATTACK`,W/2,92);
+ const ability=playerLevel>=5?`DEFENCE LASER ${Math.max(0,ship.defenseCooldown).toFixed(1)}s`:playerLevel>=4?(ship.regenDelay>0?`REGEN PAUSED ${ship.regenDelay.toFixed(1)}s`:'AUTO SHIELD REGEN'):`${playerDamageMultiplier().toFixed(2)}× ATTACK`;
+ ctx.fillText(`PLAYER LV.${playerLevel} · ${pc.name} · ${ability}`,W/2,92);
  ctx.shadowBlur=0;
  if(playerLevel<3){
    const current=playerLevelThresholds[playerLevel-1],target=playerLevelThresholds[playerLevel];
@@ -616,6 +685,24 @@ function drawShip(){
  };
  const [w,h]=dimensions[mode];ctx.drawImage(IMG[mode],-w*.48,-h*.48,w,h);
  ctx.shadowBlur=0;
+ if(playerLevel>=4&&ship.regenDelay<=0&&ship.shield<ship.maxShield){
+   const regenPulse=.45+.35*Math.sin(ship.shieldPulse*7);
+   ctx.save();ctx.globalCompositeOperation='screen';ctx.shadowBlur=26;ctx.shadowColor='#45dfff';
+   const rg=ctx.createRadialGradient(0,0,8,0,0,Math.max(w,h)*.72);
+   rg.addColorStop(0,`rgba(185,250,255,${.32+regenPulse*.18})`);rg.addColorStop(.42,`rgba(52,210,255,${.20+regenPulse*.18})`);rg.addColorStop(1,'rgba(26,120,255,0)');
+   ctx.fillStyle=rg;ctx.beginPath();ctx.ellipse(0,0,w*.58,Math.max(h*.62,44),0,0,Math.PI*2);ctx.fill();ctx.restore();
+   ctx.save();ctx.strokeStyle=`rgba(102,235,255,${.35+regenPulse*.35})`;ctx.lineWidth=2;ctx.setLineDash([5,7]);ctx.lineDashOffset=-ship.shieldPulse*30;
+   ctx.beginPath();ctx.ellipse(0,0,w*.50,Math.max(h*.52,39),0,0,Math.PI*2);ctx.stroke();ctx.restore();
+ }
+ if(playerLevel>=5&&ship.defenseCooldown<=0){
+   ctx.save();ctx.strokeStyle='rgba(198,162,255,.65)';ctx.lineWidth=1.5;ctx.setLineDash([4,6]);ctx.lineDashOffset=-ship.shieldPulse*24;
+   ctx.beginPath();ctx.arc(0,0,currentShipAssetLength(),0,Math.PI*2);ctx.stroke();ctx.restore();
+ }
+ if(ship.defenseBeam>0&&ship.defenseTarget){
+   ctx.save();const tx=ship.defenseTarget.x-ship.x,ty=ship.defenseTarget.y-ship.y;
+   ctx.strokeStyle='#e8dcff';ctx.lineWidth=4;ctx.shadowBlur=22;ctx.shadowColor='#a978ff';ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(tx,ty);ctx.stroke();
+   ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(tx,ty);ctx.stroke();ctx.restore();
+ }
  if(ship.shieldFlare>0){
    const life=ship.shieldFlare/.72;
    const rx=w*.53,ry=Math.max(h*.48,48);
