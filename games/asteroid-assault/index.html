@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="description" content="Jonah and Noel's Asteroid Assault Game — GUI Polish v7.1">
 <meta name="theme-color" content="#120b00">
-<title>Jonah and Noel's Asteroid Assault Game — GUI Polish v7.1</title>
+<title>Jonah and Noel's Asteroid Assault Game — Systems Polish v7.2</title>
 <style>
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090600;color:#fff;font-family:Arial,Helvetica,sans-serif;touch-action:none}
 canvas{display:block;width:100vw;height:100vh}
@@ -106,7 +106,7 @@ canvas{display:block;width:100vw;height:100vh}
 <script>
 (() => {
 const canvas=document.getElementById('game'),ctx=canvas.getContext('2d'),transformBtn=document.getElementById('transformBtn');
-let W=0,H=0,DPR=1,last=performance.now(),elapsed=0,state='playing',score=0,level=1,orientationPaused=false,milestoneBanner=0,milestoneType=0,modeCardTimer=3;
+let W=0,H=0,DPR=1,last=performance.now(),elapsed=0,state='playing',score=0,level=1,orientationPaused=false,milestoneBanner=0,milestoneType=0,milestoneAwaitingAck=false,modeCardTimer=3;
 let playerLevel=1;
 const playerLevelThresholds=[0,750,2500];
 const playerLevelColors={
@@ -151,7 +151,7 @@ const modeNames={robot:'ROBOT',spaceship:'SPACESHIP',hybrid:'HYBRID'};
 const ship={
  x:130,y:300,speed:350,shield:3,maxShield:3,hitFlash:0,missileMode:0,
  fireTimer:0,missileTimer:0,mode:'hybrid',transforming:0,nextMode:null,
- blastTimer:5,invulnerable:0,shieldFlare:0,shieldAngle:0,shieldPulse:0,regenDelay:0,regenGlow:0,defenseCooldown:10,defenseBeam:0,defenseTarget:null,robotBurstRemaining:0,robotBurstTimer:0,robotBurstCooldown:0,shieldMemory:{robot:5,spaceship:3,hybrid:3}
+ blastTimer:5,invulnerable:0,shieldFlare:0,shieldAngle:0,shieldPulse:0,regenDelay:0,regenGlow:0,defenseCooldown:10,defenseBeam:0,defenseTarget:null,robotBurstRemaining:0,robotBurstTimer:0,robotBurstCooldown:0,shieldRatio:1,nextMissilePower:20
 };
 const asteroid={x:0,y:0,r:105,hp:20,maxHp:20,shootTimer:1.6,phase:0,dead:false,respawn:0};
 const boss={
@@ -171,23 +171,30 @@ addEventListener('resize',resize);resize();
 addEventListener('keydown',e=>{
  keys[e.key.toLowerCase()]=true;
  if(['arrowup','arrowdown',' '].includes(e.key.toLowerCase()))e.preventDefault();
+ if(milestoneAwaitingAck&&(e.key==='Enter'||e.key===' ')){acknowledgeMilestone();return;}
  if(e.code==='Space'&&!e.repeat&&state==='playing')startTransform();
  else if(state!=='playing'&&(e.key==='Enter'||e.key===' '))restart();
 });
 addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
 transformBtn.addEventListener('pointerdown',e=>{e.preventDefault();if(state==='playing')startTransform();else restart();});
 let drag=false;
-canvas.addEventListener('pointerdown',e=>{drag=true;if(state!=='playing')restart();ship.y=Math.max(75,Math.min(H-75,e.clientY));});
+canvas.addEventListener('pointerdown',e=>{
+ if(milestoneAwaitingAck){acknowledgeMilestone();return;}
+ drag=true;if(state!=='playing')restart();ship.y=Math.max(75,Math.min(H-75,e.clientY));
+});
 canvas.addEventListener('pointermove',e=>{if(drag)ship.y=Math.max(75,Math.min(H-75,e.clientY));});
 addEventListener('pointerup',()=>drag=false);
 
-function syncActiveShieldMemory(){
- ship.shieldMemory[ship.mode]=Math.max(0,Math.min(ship.maxShield,ship.shield));
+function syncSharedShield(){
+ ship.shieldRatio=Math.max(0,Math.min(1,ship.shield/ship.maxShield));
 }
-function restoreModeShield(mode){
+function applySharedShieldToMode(mode){
  ship.maxShield=mode==='robot'?5:3;
- const remembered=ship.shieldMemory[mode];
- ship.shield=Math.max(0,Math.min(ship.maxShield,remembered));
+ ship.shield=ship.shieldRatio*ship.maxShield;
+}
+function addSharedShieldRatio(amount){
+ ship.shieldRatio=Math.max(0,Math.min(1,ship.shieldRatio+amount));
+ ship.shield=ship.shieldRatio*ship.maxShield;
 }
 
 function startTransform(){
@@ -199,9 +206,9 @@ function startTransform(){
  burst(ship.x,ship.y,34,260,'#ffe06b');
 }
 function finishTransform(){
- syncActiveShieldMemory();
+ syncSharedShield();
  ship.mode=ship.nextMode;ship.nextMode=null;
- restoreModeShield(ship.mode);
+ applySharedShieldToMode(ship.mode);
  modeCardTimer=3;
  ship.fireTimer=0;
  ship.robotBurstRemaining=0;ship.robotBurstTimer=0;ship.robotBurstCooldown=0;
@@ -228,15 +235,22 @@ function updatePlayerLevel(){
  }
 }
 function restart(){
- elapsed=0;score=0;level=1;playerLevel=1;milestoneBanner=0;milestoneType=0;modeCardTimer=3;state='playing';ship.shield=3;ship.maxShield=3;ship.shieldMemory={robot:5,spaceship:3,hybrid:3};ship.hitFlash=0;ship.missileMode=0;
+ elapsed=0;score=0;level=1;playerLevel=1;milestoneBanner=0;milestoneType=0;milestoneAwaitingAck=false;modeCardTimer=3;state='playing';ship.shield=3;ship.maxShield=3;ship.shieldRatio=1;ship.nextMissilePower=20;ship.hitFlash=0;ship.missileMode=0;
  ship.mode='hybrid';ship.transforming=0;ship.nextMode=null;ship.blastTimer=5;ship.shieldFlare=0;ship.shieldPulse=0;ship.regenDelay=0;ship.regenGlow=0;ship.defenseCooldown=10;ship.defenseBeam=0;ship.defenseTarget=null;ship.robotBurstRemaining=0;ship.robotBurstTimer=0;ship.robotBurstCooldown=0;transformBtn.innerHTML='MODE<br>HYBRID';
  bullets.length=enemyShots.length=particles.length=debris.length=powerups.length=missiles.length=blasts.length=bossMissiles.length=bossLasers.length=0;
  boss.active=false;boss.defeated=false;boss.hp=boss.maxHp;boss.entry=0;boss.deathTimer=0;boss.deathStage=0;boss.deathPulse=0;boss.coreFlash=0;
  resetAsteroid();
 }
+function acknowledgeMilestone(){
+ if(!milestoneAwaitingAck)return;
+ milestoneAwaitingAck=false;
+ milestoneBanner=0;
+ last=performance.now();
+}
 function triggerMilestone(type){
  milestoneType=type;
- milestoneBanner=4.2;
+ milestoneBanner=1;
+ milestoneAwaitingAck=true;
  ship.invulnerable=Math.max(ship.invulnerable,1.2);
  burst(ship.x,ship.y,type===15?90:110,430,type===15?'#5fe8ff':'#b98cff');
 }
@@ -355,8 +369,9 @@ function asteroidHit(d,x,y){
 }
 function shipHit(sourceX=ship.x+120,sourceY=ship.y,damage=1){
  if(ship.hitFlash>0||ship.invulnerable>0)return;
- ship.shield=Math.max(0,ship.shield-damage);
- syncActiveShieldMemory();
+ const ratioDamage=damage/ship.maxShield;
+ ship.shieldRatio=Math.max(0,ship.shieldRatio-ratioDamage);
+ ship.shield=ship.shieldRatio*ship.maxShield;
  ship.regenDelay=3;
  ship.regenGlow=0;
  ship.hitFlash=1.1;
@@ -401,7 +416,7 @@ function hit(a,b,r){const dx=a.x-b.x,dy=a.y-b.y;return dx*dx+dy*dy<(a.r+r)*(a.r+
 function trim(a){for(let i=a.length-1;i>=0;i--)if(a[i].dead||a[i].life<=0)a.splice(i,1)}
 
 function update(dt){
- if(orientationPaused)return;
+ if(orientationPaused||milestoneAwaitingAck)return;
  for(const s of stars){s.x-=s.s*dt;if(s.x<0){s.x=W;s.y=Math.random()*H}}
  for(const p of particles){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=.985;p.vy*=.985;p.life-=dt}trim(particles);
  for(const d of debris){d.x+=d.vx*dt;d.y+=d.vy*dt;d.rot+=d.vr*dt;d.life-=dt}trim(debris);
@@ -415,7 +430,6 @@ function update(dt){
  ship.regenDelay=Math.max(0,ship.regenDelay-dt);
  ship.regenGlow=Math.max(0,ship.regenGlow-dt);
  ship.defenseBeam=Math.max(0,ship.defenseBeam-dt);
- milestoneBanner=Math.max(0,milestoneBanner-dt);
  modeCardTimer=Math.max(0,modeCardTimer-dt);
  const robotRegen=ship.mode==='robot';
  const progressionRegen=playerLevel>=4;
@@ -424,8 +438,8 @@ function update(dt){
    if(robotRegen){
      fullRegenSeconds=playerLevel>=5?8:playerLevel>=4?12:50;
    }
-   ship.shield=Math.min(ship.maxShield,ship.shield+(ship.maxShield/fullRegenSeconds)*dt);
-   syncActiveShieldMemory();
+   ship.shieldRatio=Math.min(1,ship.shieldRatio+dt/fullRegenSeconds);
+   ship.shield=ship.shieldRatio*ship.maxShield;
    ship.regenGlow=.25;
  }
  if(playerLevel>=5){
@@ -468,7 +482,10 @@ function update(dt){
    }
  }
  if(ship.missileMode>0){ship.missileTimer-=dt;if(ship.missileTimer<=0){fireMissile();ship.missileTimer=.72}}
- if(elapsed>=20&&elapsed<20.1&&!powerups.some(p=>p.type==='missile'))spawnPower('missile');
+ if(elapsed>=ship.nextMissilePower&&!powerups.some(p=>p.type==='missile')&&ship.missileMode<=0){
+   spawnPower('missile');
+   ship.nextMissilePower=elapsed+25+Math.random()*10;
+ }
  if(elapsed>=10&&Math.floor(elapsed)%14===0&&Math.random()<dt*.9&&!powerups.some(p=>p.type==='shield'))spawnPower('shield');
 
  if(boss.active){
@@ -593,7 +610,10 @@ function update(dt){
    if(bl.life>0.15&&Math.abs(ship.y-bl.y)<bl.h*.5+22&&ship.x<W*.72)shipHit(W,bl.y,1);
  }trim(bossLasers);
 
- for(const p of powerups){p.t+=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=Math.sin(p.t*2.7)*28*dt;if(p.y<70||p.y>H-70)p.vy*=-1;if(hit(p,ship,38)){p.dead=true;if(p.type==='missile')ship.missileMode=10;else {ship.shield=Math.min(ship.maxShield,ship.shield+1);syncActiveShieldMemory();}burst(p.x,p.y,30,320,p.type==='shield'?'#55dfff':'#ffd158')}if(p.x<-50)p.dead=true}trim(powerups);
+ for(const p of powerups){p.t+=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=Math.sin(p.t*2.7)*28*dt;if(p.y<70||p.y>H-70)p.vy*=-1;if(hit(p,ship,38)){p.dead=true;if(p.type==='missile'){ship.missileMode=10;ship.nextMissilePower=elapsed+30+Math.random()*10;}else {addSharedShieldRatio(1/3);}burst(p.x,p.y,30,320,p.type==='shield'?'#55dfff':'#ffd158')}if(p.x<-50){
+   p.dead=true;
+   if(p.type==='missile')ship.nextMissilePower=Math.min(ship.nextMissilePower,elapsed+12);
+ }}trim(powerups);
 }
 
 function rr(x,y,w,h,r){ctx.beginPath();ctx.roundRect(x,y,w,h,r)}
@@ -692,7 +712,7 @@ function drawHud(){
 
    const pc=playerLevelColors[playerLevel];
    ctx.font='800 10px Arial';ctx.fillStyle=pc.main;
-   const compactAbility=playerLevel>=5?`GUARD ${Math.max(0,ship.defenseCooldown).toFixed(1)}s`:
+   const compactAbility=playerLevel>=5?(ship.defenseCooldown<=0?'GUARD READY':`GUARD ${Math.max(0,ship.defenseCooldown).toFixed(1)}s`):
      playerLevel>=4?(ship.regenDelay>0?`REGEN PAUSED ${ship.regenDelay.toFixed(1)}s`:'FAST REGEN'):
      ship.mode==='robot'?(ship.regenDelay>0?`ROBOT REGEN ${ship.regenDelay.toFixed(1)}s`:'SLOW REGEN + BURST'):
      `${playerDamageMultiplier().toFixed(2)}× ATTACK`;
@@ -773,7 +793,7 @@ function drawHud(){
  ctx.fillText(perk,W/2,72);
  const pc=playerLevelColors[playerLevel];
  ctx.font='900 13px Arial';ctx.fillStyle=pc.main;ctx.shadowBlur=10;ctx.shadowColor=pc.main;
- const ability=playerLevel>=5?`DEFENCE LASER ${Math.max(0,ship.defenseCooldown).toFixed(1)}s`:
+ const ability=playerLevel>=5?(ship.defenseCooldown<=0?'DEFENCE LASER READY':`DEFENCE LASER ${Math.max(0,ship.defenseCooldown).toFixed(1)}s`):
  playerLevel>=4?(ship.regenDelay>0?`REGEN PAUSED ${ship.regenDelay.toFixed(1)}s`:'FAST SHIELD REGEN'):
  ship.mode==='robot'?(ship.regenDelay>0?`ROBOT REGEN PAUSED ${ship.regenDelay.toFixed(1)}s`:'SLOW REGEN · 3-SHOT BURST'):
  `${playerDamageMultiplier().toFixed(2)}× ATTACK`;
@@ -846,8 +866,24 @@ function drawShip(){
    ctx.restore();
  }
  if(playerLevel>=5&&ship.defenseCooldown<=0){
-   ctx.save();ctx.strokeStyle='rgba(198,162,255,.65)';ctx.lineWidth=1.5;ctx.setLineDash([4,6]);ctx.lineDashOffset=-ship.shieldPulse*24;
-   ctx.beginPath();ctx.arc(0,0,currentShipAssetLength(),0,Math.PI*2);ctx.stroke();ctx.restore();
+   ctx.save();
+   ctx.globalCompositeOperation='screen';
+   const gp=.55+.45*Math.sin(ship.shieldPulse*5);
+   ctx.shadowBlur=16;
+   ctx.shadowColor='#a78cff';
+   ctx.strokeStyle=`rgba(211,199,255,${.45+.35*gp})`;
+   ctx.lineWidth=1.6;
+   const bx=w*.34,by=Math.max(h*.30,24);
+   const c=8;
+   ctx.beginPath();
+   ctx.moveTo(-bx,-by+c);ctx.lineTo(-bx,-by);ctx.lineTo(-bx+c,-by);
+   ctx.moveTo(bx-c,-by);ctx.lineTo(bx,-by);ctx.lineTo(bx,-by+c);
+   ctx.moveTo(-bx,by-c);ctx.lineTo(-bx,by);ctx.lineTo(-bx+c,by);
+   ctx.moveTo(bx-c,by);ctx.lineTo(bx,by);ctx.lineTo(bx,by-c);
+   ctx.stroke();
+   ctx.fillStyle=`rgba(190,166,255,${.35+.35*gp})`;
+   ctx.beginPath();ctx.arc(w*.24,-h*.18,2.2,0,Math.PI*2);ctx.fill();
+   ctx.restore();
  }
  if(ship.defenseBeam>0&&ship.defenseTarget){
    ctx.save();const tx=ship.defenseTarget.x-ship.x,ty=ship.defenseTarget.y-ship.y;
@@ -1060,11 +1096,7 @@ function drawTransformOverlay(){
 }
 function drawMilestoneBanner(){
  if(milestoneBanner<=0)return;
- const total=4.2;
- const elapsedBanner=total-milestoneBanner;
- const fadeIn=Math.min(1,elapsedBanner/.35);
- const fadeOut=Math.min(1,milestoneBanner/.55);
- const alpha=fadeIn*fadeOut;
+ const alpha=1;
 
  ctx.save();
  ctx.globalAlpha=alpha;
@@ -1108,6 +1140,9 @@ function drawMilestoneBanner(){
    ctx.fillStyle='#c6a2ff';
    ctx.fillText('Asteroid Level 20 reached',W/2,py+(isCompactLandscape()?172:216));
  }
+ ctx.font=`800 ${isCompactLandscape()?11:14}px Arial`;
+ ctx.fillStyle='rgba(255,255,255,.72)';
+ ctx.fillText('TAP OR PRESS ENTER TO CONTINUE',W/2,py+panelH-18);
 
  ctx.restore();
 }
