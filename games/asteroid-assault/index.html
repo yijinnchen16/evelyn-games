@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="description" content="Jonah and Noel's Asteroid Assault Game">
 <meta name="theme-color" content="#120b00">
-<title>Jonah and Noel's Asteroid Assault Game — Tank Update</title>
+<title>Jonah and Noel's Asteroid Assault Game — GUI Polish v7</title>
 <style>
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090600;color:#fff;font-family:Arial,Helvetica,sans-serif;touch-action:none}
 canvas{display:block;width:100vw;height:100vh}
@@ -106,7 +106,7 @@ canvas{display:block;width:100vw;height:100vh}
 <script>
 (() => {
 const canvas=document.getElementById('game'),ctx=canvas.getContext('2d'),transformBtn=document.getElementById('transformBtn');
-let W=0,H=0,DPR=1,last=performance.now(),elapsed=0,state='playing',score=0,level=1,orientationPaused=false;
+let W=0,H=0,DPR=1,last=performance.now(),elapsed=0,state='playing',score=0,level=1,orientationPaused=false,milestoneBanner=0,milestoneType=0,modeCardTimer=3;
 let playerLevel=1;
 const playerLevelThresholds=[0,750,2500];
 const playerLevelColors={
@@ -117,7 +117,7 @@ const playerLevelColors={
   5:{main:'#b98cff',soft:'rgba(185,140,255,.58)',name:'GUARDIAN'}
 };
 const keys={},bullets=[],enemyShots=[],particles=[],debris=[],powerups=[],missiles=[],blasts=[],bossMissiles=[],bossLasers=[],stars=[];
-const IMG={},sources={"nebula": "assets/nebula.png", "asteroid": "assets/asteroid.png", "missile": "assets/missile.png", "shield": "assets/shield.png", "robot": "assets/robot.png", "spaceship": "assets/spaceship.png", "hybrid": "assets/hybrid.png", "boss": "assets/boss.png"};
+const IMG={},sources={"nebula": "assets/nebula.png", "asteroid": "assets/asteroid.png", "missile": "assets/missile.png", "shield": "assets/shield.png", "robot": "assets/robot.png", "spaceship": "assets/spaceship.png", "hybrid": "assets/hybrid.png", "boss": "assets/boss.png", "iconSpeed": "assets/hud-icons/speed.svg", "iconRapid": "assets/hud-icons/rapid-fire.svg", "iconShield": "assets/hud-icons/shield.svg", "iconRegen": "assets/hud-icons/regen.svg", "iconBlast": "assets/hud-icons/blast.svg", "iconBurst": "assets/hud-icons/burst.svg", "iconBalanced": "assets/hud-icons/balanced.svg", "iconResistance": "assets/hud-icons/resistance.svg"};
 let loaded=0;
 
 for(const [k,v] of Object.entries(sources)){const im=new Image();im.src=v;im.onload=()=>loaded++;IMG[k]=im;}
@@ -151,7 +151,7 @@ const modeNames={robot:'ROBOT',spaceship:'SPACESHIP',hybrid:'HYBRID'};
 const ship={
  x:130,y:300,speed:350,shield:3,maxShield:3,hitFlash:0,missileMode:0,
  fireTimer:0,missileTimer:0,mode:'hybrid',transforming:0,nextMode:null,
- blastTimer:5,invulnerable:0,shieldFlare:0,shieldAngle:0,shieldPulse:0,regenDelay:0,regenGlow:0,defenseCooldown:10,defenseBeam:0,defenseTarget:null,robotBurstRemaining:0,robotBurstTimer:0,robotBurstCooldown:0,robotRecoil:0
+ blastTimer:5,invulnerable:0,shieldFlare:0,shieldAngle:0,shieldPulse:0,regenDelay:0,regenGlow:0,defenseCooldown:10,defenseBeam:0,defenseTarget:null,robotBurstRemaining:0,robotBurstTimer:0,robotBurstCooldown:0,shieldMemory:{robot:5,spaceship:3,hybrid:3}
 };
 const asteroid={x:0,y:0,r:105,hp:20,maxHp:20,shootTimer:1.6,phase:0,dead:false,respawn:0};
 const boss={
@@ -181,6 +181,15 @@ canvas.addEventListener('pointerdown',e=>{drag=true;if(state!=='playing')restart
 canvas.addEventListener('pointermove',e=>{if(drag)ship.y=Math.max(75,Math.min(H-75,e.clientY));});
 addEventListener('pointerup',()=>drag=false);
 
+function syncActiveShieldMemory(){
+ ship.shieldMemory[ship.mode]=Math.max(0,Math.min(ship.maxShield,ship.shield));
+}
+function restoreModeShield(mode){
+ ship.maxShield=mode==='robot'?5:3;
+ const remembered=ship.shieldMemory[mode];
+ ship.shield=Math.max(0,Math.min(ship.maxShield,remembered));
+}
+
 function startTransform(){
  if(ship.transforming>0)return;
  const i=modes.indexOf(ship.mode);
@@ -190,18 +199,12 @@ function startTransform(){
  burst(ship.x,ship.y,34,260,'#ffe06b');
 }
 function finishTransform(){
+ syncActiveShieldMemory();
  ship.mode=ship.nextMode;ship.nextMode=null;
- if(ship.mode==='robot'){
-   // Robot mode expands shield capacity but never heals during transformation.
-   ship.maxShield=5;
-   ship.shield=Math.min(ship.shield,5);
- }else{
-   // Fighter and Hybrid have a three-shield capacity.
-   ship.maxShield=3;
-   ship.shield=Math.min(ship.shield,3);
- }
+ restoreModeShield(ship.mode);
+ modeCardTimer=3;
  ship.fireTimer=0;
- ship.robotBurstRemaining=0;ship.robotBurstTimer=0;ship.robotBurstCooldown=0;ship.robotRecoil=0;
+ ship.robotBurstRemaining=0;ship.robotBurstTimer=0;ship.robotBurstCooldown=0;
  ship.blastTimer=5;
  transformBtn.innerHTML=`MODE<br>${modeNames[ship.mode]}`;
  burst(ship.x,ship.y,42,320,'#71e9ff');
@@ -225,13 +228,22 @@ function updatePlayerLevel(){
  }
 }
 function restart(){
- elapsed=0;score=0;level=1;playerLevel=1;state='playing';ship.shield=3;ship.maxShield=3;ship.hitFlash=0;ship.missileMode=0;
- ship.mode='hybrid';ship.transforming=0;ship.nextMode=null;ship.blastTimer=5;ship.shieldFlare=0;ship.shieldPulse=0;ship.regenDelay=0;ship.regenGlow=0;ship.defenseCooldown=10;ship.defenseBeam=0;ship.defenseTarget=null;ship.robotBurstRemaining=0;ship.robotBurstTimer=0;ship.robotBurstCooldown=0;ship.robotRecoil=0;transformBtn.innerHTML='MODE<br>HYBRID';
+ elapsed=0;score=0;level=1;playerLevel=1;milestoneBanner=0;milestoneType=0;modeCardTimer=3;state='playing';ship.shield=3;ship.maxShield=3;ship.shieldMemory={robot:5,spaceship:3,hybrid:3};ship.hitFlash=0;ship.missileMode=0;
+ ship.mode='hybrid';ship.transforming=0;ship.nextMode=null;ship.blastTimer=5;ship.shieldFlare=0;ship.shieldPulse=0;ship.regenDelay=0;ship.regenGlow=0;ship.defenseCooldown=10;ship.defenseBeam=0;ship.defenseTarget=null;ship.robotBurstRemaining=0;ship.robotBurstTimer=0;ship.robotBurstCooldown=0;transformBtn.innerHTML='MODE<br>HYBRID';
  bullets.length=enemyShots.length=particles.length=debris.length=powerups.length=missiles.length=blasts.length=bossMissiles.length=bossLasers.length=0;
  boss.active=false;boss.defeated=false;boss.hp=boss.maxHp;boss.entry=0;boss.deathTimer=0;boss.deathStage=0;boss.deathPulse=0;boss.coreFlash=0;
  resetAsteroid();
 }
+function triggerMilestone(type){
+ milestoneType=type;
+ milestoneBanner=4.2;
+ ship.invulnerable=Math.max(ship.invulnerable,1.2);
+ burst(ship.x,ship.y,type===15?90:110,430,type===15?'#5fe8ff':'#b98cff');
+}
+
 function resetAsteroid(){
+ if(level===15&&playerLevel<4)triggerMilestone(15);
+ if(level===20&&playerLevel<5)triggerMilestone(20);
  updatePlayerLevel();
  if(level===5){startBoss();return;}
  boss.active=false;
@@ -344,6 +356,7 @@ function asteroidHit(d,x,y){
 function shipHit(sourceX=ship.x+120,sourceY=ship.y,damage=1){
  if(ship.hitFlash>0||ship.invulnerable>0)return;
  ship.shield=Math.max(0,ship.shield-damage);
+ syncActiveShieldMemory();
  ship.regenDelay=3;
  ship.regenGlow=0;
  ship.hitFlash=1.1;
@@ -402,6 +415,8 @@ function update(dt){
  ship.regenDelay=Math.max(0,ship.regenDelay-dt);
  ship.regenGlow=Math.max(0,ship.regenGlow-dt);
  ship.defenseBeam=Math.max(0,ship.defenseBeam-dt);
+ milestoneBanner=Math.max(0,milestoneBanner-dt);
+ modeCardTimer=Math.max(0,modeCardTimer-dt);
  const robotRegen=ship.mode==='robot';
  const progressionRegen=playerLevel>=4;
  if((robotRegen||progressionRegen)&&ship.regenDelay<=0&&ship.shield<ship.maxShield){
@@ -410,6 +425,7 @@ function update(dt){
      fullRegenSeconds=playerLevel>=5?8:playerLevel>=4?12:50;
    }
    ship.shield=Math.min(ship.maxShield,ship.shield+(ship.maxShield/fullRegenSeconds)*dt);
+   syncActiveShieldMemory();
    ship.regenGlow=.25;
  }
  if(playerLevel>=5){
@@ -431,15 +447,13 @@ function update(dt){
    ship.fireTimer-=dt;
    ship.robotBurstTimer=Math.max(0,ship.robotBurstTimer-dt);
    ship.robotBurstCooldown=Math.max(0,ship.robotBurstCooldown-dt);
-   ship.robotRecoil=Math.max(0,ship.robotRecoil-dt);
-   if(ship.mode==='robot'){
+      if(ship.mode==='robot'){
      if(ship.robotBurstRemaining===0&&ship.robotBurstCooldown<=0){
        ship.robotBurstRemaining=3;
        ship.robotBurstTimer=0;
      }
      if(ship.robotBurstRemaining>0&&ship.robotBurstTimer<=0){
        fire();
-       ship.robotRecoil=.09;
        ship.robotBurstRemaining--;
        if(ship.robotBurstRemaining>0)ship.robotBurstTimer=.10;
        else ship.robotBurstCooldown=.75;
@@ -579,7 +593,7 @@ function update(dt){
    if(bl.life>0.15&&Math.abs(ship.y-bl.y)<bl.h*.5+22&&ship.x<W*.72)shipHit(W,bl.y,1);
  }trim(bossLasers);
 
- for(const p of powerups){p.t+=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=Math.sin(p.t*2.7)*28*dt;if(p.y<70||p.y>H-70)p.vy*=-1;if(hit(p,ship,38)){p.dead=true;if(p.type==='missile')ship.missileMode=10;else ship.shield=Math.min(ship.maxShield,ship.shield+1);burst(p.x,p.y,30,320,p.type==='shield'?'#55dfff':'#ffd158')}if(p.x<-50)p.dead=true}trim(powerups);
+ for(const p of powerups){p.t+=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=Math.sin(p.t*2.7)*28*dt;if(p.y<70||p.y>H-70)p.vy*=-1;if(hit(p,ship,38)){p.dead=true;if(p.type==='missile')ship.missileMode=10;else {ship.shield=Math.min(ship.maxShield,ship.shield+1);syncActiveShieldMemory();}burst(p.x,p.y,30,320,p.type==='shield'?'#55dfff':'#ffd158')}if(p.x<-50)p.dead=true}trim(powerups);
 }
 
 function rr(x,y,w,h,r){ctx.beginPath();ctx.roundRect(x,y,w,h,r)}
@@ -588,6 +602,54 @@ function drawBg(){
  ctx.fillStyle='rgba(12,7,0,.22)';ctx.fillRect(0,0,W,H);
  for(const s of stars){ctx.globalAlpha=s.a;ctx.fillStyle='#fff3bc';ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,7);ctx.fill()}ctx.globalAlpha=1;
 }
+function drawModeSummary(compact){
+ const data={
+  spaceship:[
+   ['iconSpeed','HIGH SPEED'],
+   ['iconRapid','RAPID FIRE'],
+   ['iconRegen',playerLevel>=4?'REGEN ACTIVE':'REGEN · L15']
+  ],
+  hybrid:[
+   ['iconBalanced','BALANCED'],
+   ['iconBlast','BLAST · 5s'],
+   ['iconRegen',playerLevel>=4?'REGEN ACTIVE':'REGEN · L15']
+  ],
+  robot:[
+   ['iconShield','SHIELD · 5'],
+   ['iconRegen',playerLevel>=5?'REGEN · 8s':playerLevel>=4?'REGEN · 12s':'REGEN · 50s'],
+   ['iconBurst','BURST · ×3']
+  ]
+ };
+ const items=data[ship.mode];
+ const expanded=modeCardTimer>0;
+ const panelW=compact?(expanded?250:198):(expanded?300:245);
+ const panelH=compact?(expanded?48:34):(expanded?58:40);
+ const x=W/2-panelW/2;
+ const y=compact?94:138;
+
+ ctx.save();
+ rr(x,y,panelW,panelH,8);
+ ctx.fillStyle='rgba(4,10,18,.72)';ctx.fill();
+ ctx.strokeStyle='rgba(105,225,255,.48)';ctx.lineWidth=1;ctx.stroke();
+
+ const gap=panelW/3;
+ for(let i=0;i<3;i++){
+   const cx=x+gap*i+gap/2;
+   const iconSize=compact?(expanded?20:16):(expanded?24:18);
+   const icon=IMG[items[i][0]];
+   if(icon&&icon.complete)ctx.drawImage(icon,cx-iconSize/2,y+(expanded?5:6),iconSize,iconSize);
+   ctx.textAlign='center';
+   ctx.font=`800 ${compact?8:9}px Arial`;
+   ctx.fillStyle='#dffcff';
+   ctx.fillText(items[i][1],cx,y+(expanded?panelH-8:panelH-7));
+   if(i<2){
+     ctx.strokeStyle='rgba(99,211,238,.20)';
+     ctx.beginPath();ctx.moveTo(x+gap*(i+1),y+7);ctx.lineTo(x+gap*(i+1),y+panelH-7);ctx.stroke();
+   }
+ }
+ ctx.restore();
+}
+
 function drawHud(){
  ctx.save();
  const compact=isCompactLandscape();
@@ -633,6 +695,17 @@ function drawHud(){
      ship.mode==='robot'?(ship.regenDelay>0?`ROBOT REGEN ${ship.regenDelay.toFixed(1)}s`:'SLOW REGEN + BURST'):
      `${playerDamageMultiplier().toFixed(2)}× ATTACK`;
    ctx.fillText(`P${playerLevel} · ${compactAbility}`,centerX,58);
+   ctx.font='700 9px Arial';
+   if(playerLevel<4){
+     ctx.fillStyle='#73eaff';
+     ctx.fillText('NEXT: ASTEROID LV15 · AUTO SHIELD REGEN',centerX,86);
+   }else if(playerLevel<5){
+     ctx.fillStyle='#c9a9ff';
+     ctx.fillText('NEXT: ASTEROID LV20 · DEFENCE LASER',centerX,86);
+   }else{
+     ctx.fillStyle='#9dffbe';
+     ctx.fillText('MAX PLAYER EVOLUTION',centerX,86);
+   }
 
    const perk=ship.mode==='robot'?'TANK · 3-SHOT BURST':ship.mode==='spaceship'?'RAPID FIRE':`BLAST ${Math.max(0,ship.blastTimer).toFixed(1)}s`;
    ctx.font='700 10px Arial';ctx.fillStyle='#ffe077';
@@ -666,6 +739,7 @@ function drawHud(){
      ctx.fillText(`MISSILES ${ship.missileMode.toFixed(1)}s`,W/2,my+17);
    }
 
+   drawModeSummary(true);
    ctx.restore();
    return;
  }
@@ -702,15 +776,26 @@ function drawHud(){
  ship.mode==='robot'?(ship.regenDelay>0?`ROBOT REGEN PAUSED ${ship.regenDelay.toFixed(1)}s`:'SLOW REGEN · 3-SHOT BURST'):
  `${playerDamageMultiplier().toFixed(2)}× ATTACK`;
  ctx.fillText(`PLAYER LV.${playerLevel} · ${pc.name} · ${ability}`,W/2,92);
+ if(playerLevel<4){
+   ctx.font='800 11px Arial';ctx.fillStyle='#73eaff';
+   ctx.fillText('NEXT EVOLUTION: ASTEROID LEVEL 15 · AUTO SHIELD REGEN',W/2,120);
+ }else if(playerLevel<5){
+   ctx.font='800 11px Arial';ctx.fillStyle='#c9a9ff';
+   ctx.fillText('NEXT EVOLUTION: ASTEROID LEVEL 20 · GUARDIAN DEFENCE LASER',W/2,120);
+ }else{
+   ctx.font='900 11px Arial';ctx.fillStyle='#9dffbe';
+   ctx.fillText('MAX PLAYER EVOLUTION ACHIEVED',W/2,120);
+ }
  ctx.shadowBlur=0;
  if(playerLevel<3){
    const current=playerLevelThresholds[playerLevel-1],target=playerLevelThresholds[playerLevel];
    const progress=Math.max(0,Math.min(1,(score-current)/(target-current)));
-   const pw=180,px=W/2-pw/2,py=100;
+   const pw=180,px=W/2-pw/2,py=128;
    rr(px,py,pw,7,4);ctx.fillStyle='rgba(255,255,255,.13)';ctx.fill();
    rr(px,py,pw*progress,7,4);ctx.fillStyle=pc.main;ctx.fill();
  }
- if(ship.missileMode>0){rr(W/2-180,H-58,360,38,8);ctx.fillStyle='rgba(18,12,0,.75)';ctx.fill();ctx.strokeStyle='#ffc51c';ctx.stroke();ctx.font='700 16px Arial';ctx.fillStyle='#ffd24d';ctx.fillText(`🚀 MISSILE MODE    ${ship.missileMode.toFixed(1)}s`,W/2,H-33)}
+ if(ship.missileMode>0){rr(W/2-180,H-58,360,38,8);ctx.fillStyle='rgba(18,12,0,.75)';ctx.fill();ctx.strokeStyle='#ffc51c';ctx.stroke();ctx.font='700 16px Arial';ctx.fillStyle='#ffd24d';ctx.fillText(`MISSILE MODE    ${ship.missileMode.toFixed(1)}s`,W/2,H-33)}
+ drawModeSummary(false);
  ctx.restore();
 }
 function drawShip(){
@@ -728,17 +813,35 @@ function drawShip(){
  }
  const dimensions=getShipDimensions();
  const [w,h]=dimensions[mode];
- const recoilOffset=(mode==='robot'&&ship.robotRecoil>0)?-5*(ship.robotRecoil/.09):0;
- ctx.drawImage(IMG[mode],-w*.48+recoilOffset,-h*.48,w,h);
+ ctx.drawImage(IMG[mode],-w*.48,-h*.48,w,h);
  ctx.shadowBlur=0;
  if((ship.mode==='robot'||playerLevel>=4)&&ship.regenDelay<=0&&ship.shield<ship.maxShield){
-   const regenPulse=.45+.35*Math.sin(ship.shieldPulse*(ship.mode==='robot'?9:7));
-   ctx.save();ctx.globalCompositeOperation='screen';ctx.shadowBlur=ship.mode==='robot'?38:26;ctx.shadowColor='#45dfff';
-   const rg=ctx.createRadialGradient(0,0,8,0,0,Math.max(w,h)*.72);
-   rg.addColorStop(0,`rgba(185,250,255,${.32+regenPulse*.18})`);rg.addColorStop(.42,`rgba(52,210,255,${.20+regenPulse*.18})`);rg.addColorStop(1,'rgba(26,120,255,0)');
-   ctx.fillStyle=rg;ctx.beginPath();ctx.ellipse(0,0,w*(ship.mode==='robot'?.68:.58),Math.max(h*(ship.mode==='robot'?.74:.62),44),0,0,Math.PI*2);ctx.fill();ctx.restore();
-   ctx.save();ctx.strokeStyle=`rgba(102,235,255,${.35+regenPulse*.35})`;ctx.lineWidth=2;ctx.setLineDash([5,7]);ctx.lineDashOffset=-ship.shieldPulse*30;
-   ctx.beginPath();ctx.ellipse(0,0,w*.50,Math.max(h*.52,39),0,0,Math.PI*2);ctx.stroke();ctx.restore();
+   const regenPulse=.5+.5*Math.sin(ship.shieldPulse*(ship.mode==='robot'?8:6));
+   ctx.save();
+   ctx.globalCompositeOperation='screen';
+   ctx.shadowBlur=ship.mode==='robot'?24:18;
+   ctx.shadowColor='#55eaff';
+   const rg=ctx.createRadialGradient(0,0,3,0,0,Math.max(w,h)*.48);
+   rg.addColorStop(0,`rgba(180,250,255,${.22+.16*regenPulse})`);
+   rg.addColorStop(.52,`rgba(46,202,255,${.10+.10*regenPulse})`);
+   rg.addColorStop(1,'rgba(20,90,230,0)');
+   ctx.fillStyle=rg;
+   ctx.beginPath();ctx.ellipse(0,0,w*.42,Math.max(h*.40,28),0,0,Math.PI*2);ctx.fill();
+
+   ctx.strokeStyle=`rgba(111,239,255,${.38+.38*regenPulse})`;
+   ctx.lineWidth=ship.mode==='robot'?2.4:1.8;
+   ctx.lineCap='round';
+   const lines=ship.mode==='robot'
+     [[-.24,-.21,.02,-.08],[-.18,.08,.08,.18],[.02,-.08,.25,-.19],[.05,.16,.28,.06]]
+     : [[-.28,-.05,.02,-.03],[.02,-.03,.29,-.08],[-.12,.10,.18,.08]];
+   for(const l of lines){
+     ctx.beginPath();ctx.moveTo(l[0]*w,l[1]*h);ctx.lineTo(l[2]*w,l[3]*h);ctx.stroke();
+   }
+   for(const n of [[-.20,-.18],[.02,-.07],[.20,-.16],[-.10,.12],[.20,.06]]){
+     ctx.fillStyle=`rgba(180,252,255,${.45+.45*regenPulse})`;
+     ctx.beginPath();ctx.arc(n[0]*w,n[1]*h,ship.mode==='robot'?2.8:2.1,0,Math.PI*2);ctx.fill();
+   }
+   ctx.restore();
  }
  if(playerLevel>=5&&ship.defenseCooldown<=0){
    ctx.save();ctx.strokeStyle='rgba(198,162,255,.65)';ctx.lineWidth=1.5;ctx.setLineDash([4,6]);ctx.lineDashOffset=-ship.shieldPulse*24;
@@ -953,8 +1056,62 @@ function drawTransformOverlay(){
  ctx.fillText(`TRANSFORMING → ${modeNames[ship.nextMode]}`,W/2,H*.2);
  ctx.strokeStyle='rgba(255,221,91,.35)';ctx.lineWidth=4;ctx.beginPath();ctx.arc(ship.x,ship.y,55+p*55,0,Math.PI*2);ctx.stroke();ctx.restore();
 }
+function drawMilestoneBanner(){
+ if(milestoneBanner<=0)return;
+ const total=4.2;
+ const elapsedBanner=total-milestoneBanner;
+ const fadeIn=Math.min(1,elapsedBanner/.35);
+ const fadeOut=Math.min(1,milestoneBanner/.55);
+ const alpha=fadeIn*fadeOut;
+
+ ctx.save();
+ ctx.globalAlpha=alpha;
+ ctx.fillStyle='rgba(4,6,14,.82)';
+ ctx.fillRect(0,0,W,H);
+
+ const color=milestoneType===15?'#65e9ff':'#bc92ff';
+ const panelW=Math.min(620,W*.78);
+ const panelH=isCompactLandscape()?210:270;
+ const px=W/2-panelW/2,py=H/2-panelH/2;
+
+ rr(px,py,panelW,panelH,22);
+ ctx.fillStyle='rgba(8,11,24,.94)';
+ ctx.fill();
+ ctx.strokeStyle=color;
+ ctx.lineWidth=2.5;
+ ctx.shadowBlur=28;
+ ctx.shadowColor=color;
+ ctx.stroke();
+ ctx.shadowBlur=0;
+
+ ctx.textAlign='center';
+ ctx.fillStyle=color;
+ ctx.font=`900 ${isCompactLandscape()?16:20}px Arial`;
+ ctx.fillText(milestoneType===15?'NEW TECHNOLOGY UNLOCKED':'FINAL EVOLUTION UNLOCKED',W/2,py+38);
+
+ ctx.fillStyle='#fff';
+ ctx.font=`900 ${isCompactLandscape()?26:38}px Arial`;
+ ctx.fillText(milestoneType===15?'SHIELD MATRIX Mk II':'GUARDIAN AI ONLINE',W/2,py+(isCompactLandscape()?78:95));
+
+ ctx.font=`700 ${isCompactLandscape()?13:17}px Arial`;
+ ctx.fillStyle='rgba(255,255,255,.88)';
+ if(milestoneType===15){
+   ctx.fillText('All transformation modes now regenerate shields.',W/2,py+(isCompactLandscape()?112:140));
+   ctx.fillText('Robot Tank regeneration is significantly faster.',W/2,py+(isCompactLandscape()?136:170));
+   ctx.fillStyle='#6beaff';
+   ctx.fillText('Asteroid Level 15 reached',W/2,py+(isCompactLandscape()?172:216));
+ }else{
+   ctx.fillText('Autonomous defence laser activated.',W/2,py+(isCompactLandscape()?112:140));
+   ctx.fillText('Intercepts nearby projectiles every 10 seconds.',W/2,py+(isCompactLandscape()?136:170));
+   ctx.fillStyle='#c6a2ff';
+   ctx.fillText('Asteroid Level 20 reached',W/2,py+(isCompactLandscape()?172:216));
+ }
+
+ ctx.restore();
+}
+
 function gameOver(){ctx.fillStyle='rgba(5,3,0,.72)';ctx.fillRect(0,0,W,H);ctx.textAlign='center';ctx.fillStyle='#fff';ctx.font='900 54px Arial';ctx.fillText('MISSION FAILED',W/2,H/2-20);ctx.font='700 18px Arial';ctx.fillStyle='#ffd04a';ctx.fillText(`Score ${score} · Player Level ${playerLevel} · Tap or press Enter to restart`,W/2,H/2+24);ctx.textAlign='left'}
-function loop(now){const dt=orientationPaused?0:Math.min(.033,(now-last)/1000);last=now;update(dt);drawBg();drawHud();drawObjects();drawAsteroid();drawBoss();drawShip();drawTransformOverlay();if(state==='gameover')gameOver();requestAnimationFrame(loop)}
+function loop(now){const dt=orientationPaused?0:Math.min(.033,(now-last)/1000);last=now;update(dt);drawBg();drawHud();drawObjects();drawAsteroid();drawBoss();drawShip();drawTransformOverlay();drawMilestoneBanner();if(state==='gameover')gameOver();requestAnimationFrame(loop)}
 transformBtn.innerHTML='MODE<br>HYBRID';
 if(screen.orientation && screen.orientation.lock){
   document.addEventListener('fullscreenchange',()=>{
