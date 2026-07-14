@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="description" content="Jonah and Noel's Asteroid Assault Game">
 <meta name="theme-color" content="#120b00">
 <title>Jonah and Noel's Asteroid Assault Game</title>
@@ -13,16 +13,100 @@ canvas{display:block;width:100vw;height:100vh}
 #transformBtn{position:fixed;right:18px;bottom:18px;width:74px;height:74px;border-radius:50%;border:2px solid rgba(255,211,71,.85);background:rgba(12,8,0,.68);color:#ffe071;font-weight:900;font-size:12px;box-shadow:0 0 24px rgba(255,190,35,.35);touch-action:manipulation}
 #transformBtn:active{transform:scale(.95)}
 @media (min-width:900px){#transformBtn{opacity:.78}}
+
+#orientationGate{
+  position:fixed;
+  inset:0;
+  z-index:99999;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  padding:28px;
+  background:
+    radial-gradient(circle at 50% 35%,rgba(255,208,63,.22),transparent 28%),
+    rgba(5,3,0,.96);
+  color:#fff;
+  text-align:center;
+  font-family:Arial,Helvetica,sans-serif;
+}
+#orientationGate .panel{
+  width:min(420px,92vw);
+  padding:30px 24px;
+  border:2px solid rgba(255,207,62,.75);
+  border-radius:24px;
+  background:rgba(18,11,0,.86);
+  box-shadow:0 0 45px rgba(255,183,34,.22);
+}
+#orientationGate .phone{
+  display:inline-block;
+  font-size:74px;
+  line-height:1;
+  animation:rotatePhone 1.7s ease-in-out infinite;
+  transform-origin:center;
+}
+#orientationGate h2{
+  margin:18px 0 8px;
+  color:#ffd45b;
+  font-size:25px;
+}
+#orientationGate p{
+  margin:0;
+  color:rgba(255,255,255,.78);
+  line-height:1.5;
+}
+@keyframes rotatePhone{
+  0%,20%{transform:rotate(0deg)}
+  55%,85%{transform:rotate(90deg)}
+  100%{transform:rotate(0deg)}
+}
+@media (orientation:portrait) and (max-width:900px){
+  #orientationGate{display:flex}
+  canvas,#hint,#transformBtn{visibility:hidden}
+}
+@media (orientation:landscape){
+  #orientationGate{display:none!important}
+}
+
+
+@media (orientation:landscape) and (max-height:520px){
+  #hint{
+    left:12px;
+    bottom:10px;
+    max-width:300px;
+    padding:6px 9px;
+    font-size:10px;
+    border-radius:8px;
+    opacity:.82;
+  }
+  #transformBtn{
+    right:12px;
+    bottom:12px;
+    width:58px;
+    height:58px;
+    font-size:10px;
+    border-width:1.5px;
+  }
+}
+
 </style>
 </head>
 <body>
+
+<div id="orientationGate" role="dialog" aria-modal="true" aria-label="Rotate device">
+  <div class="panel">
+    <div class="phone">📱</div>
+    <h2>Rotate to Landscape</h2>
+    <p>Jonah and Noel's Asteroid Assault is designed for widescreen play. Turn your iPhone sideways to continue.</p>
+  </div>
+</div>
+
 <canvas id="game"></canvas>
 <div id="hint">Move: ↑ ↓ / W S / drag · Transform: Space / button</div>
 <button id="transformBtn" aria-label="Transform">MODE<br>SPACE</button>
 <script>
 (() => {
 const canvas=document.getElementById('game'),ctx=canvas.getContext('2d'),transformBtn=document.getElementById('transformBtn');
-let W=0,H=0,DPR=1,last=performance.now(),elapsed=0,state='playing',score=0,level=1;
+let W=0,H=0,DPR=1,last=performance.now(),elapsed=0,state='playing',score=0,level=1,orientationPaused=false;
 let playerLevel=1;
 const playerLevelThresholds=[0,750,2500];
 const playerLevelColors={
@@ -33,7 +117,32 @@ const playerLevelColors={
 const keys={},bullets=[],enemyShots=[],particles=[],debris=[],powerups=[],missiles=[],blasts=[],bossMissiles=[],bossLasers=[],stars=[];
 const IMG={},sources={"nebula": "assets/nebula.png", "asteroid": "assets/asteroid.png", "missile": "assets/missile.png", "shield": "assets/shield.png", "robot": "assets/robot.png", "spaceship": "assets/spaceship.png", "hybrid": "assets/hybrid.png", "boss": "assets/boss.png"};
 let loaded=0;
+
 for(const [k,v] of Object.entries(sources)){const im=new Image();im.src=v;im.onload=()=>loaded++;IMG[k]=im;}
+
+function isCompactLandscape(){
+  return window.matchMedia('(orientation: landscape)').matches &&
+         window.innerHeight <= 520;
+}
+function isMobilePortrait(){
+  return window.matchMedia('(orientation: portrait)').matches &&
+         Math.min(window.innerWidth,window.innerHeight) < 900;
+}
+function updateOrientationState(){
+  const wasPaused=orientationPaused;
+  orientationPaused=isMobilePortrait();
+  if(wasPaused && !orientationPaused){
+    last=performance.now();
+    resize();
+  }
+}
+window.addEventListener('orientationchange',()=>{
+  setTimeout(updateOrientationState,180);
+  setTimeout(resize,260);
+});
+window.addEventListener('resize',updateOrientationState);
+updateOrientationState();
+
 
 const modes=['robot','spaceship','hybrid'];
 const modeNames={robot:'ROBOT',spaceship:'SPACESHIP',hybrid:'HYBRID'};
@@ -218,6 +327,7 @@ function hit(a,b,r){const dx=a.x-b.x,dy=a.y-b.y;return dx*dx+dy*dy<(a.r+r)*(a.r+
 function trim(a){for(let i=a.length-1;i>=0;i--)if(a[i].dead||a[i].life<=0)a.splice(i,1)}
 
 function update(dt){
+ if(orientationPaused)return;
  for(const s of stars){s.x-=s.s*dt;if(s.x<0){s.x=W;s.y=Math.random()*H}}
  for(const p of particles){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=.985;p.vy*=.985;p.life-=dt}trim(particles);
  for(const d of debris){d.x+=d.vx*dt;d.y+=d.vy*dt;d.rot+=d.vr*dt;d.life-=dt}trim(debris);
@@ -323,7 +433,7 @@ function update(dt){
  for(const q of blasts){q.x+=q.vx*dt;q.life-=dt;q.r+=18*dt;if(boss.active&&!boss.defeated&&hit(q,boss,boss.r*.9)){q.dead=true;bossHit(q.damage,q.x,q.y);burst(q.x,q.y,38,380,'#fff0a3')}else if(!asteroid.dead&&hit(q,asteroid,asteroid.r*.78)){q.dead=true;asteroidHit(q.damage,q.x,q.y);burst(q.x,q.y,38,380,'#fff0a3')}if(q.x>W+60)q.dead=true}trim(blasts);
  for(const m of missiles){if(!asteroid.dead){const a=Math.atan2(asteroid.y-m.y,asteroid.x-m.x);m.vx+=Math.cos(a)*420*dt;m.vy+=Math.sin(a)*420*dt}m.x+=m.vx*dt;m.y+=m.vy*dt;m.life-=dt;particles.push({x:m.x-8,y:m.y,vx:-80,vy:(Math.random()-.5)*35,life:.22,max:.22,size:2+Math.random()*2,c:'#ffcb59'});if(boss.active&&!boss.defeated&&hit({x:m.x,y:m.y,r:8},boss,boss.r*.9)){m.dead=true;bossHit(m.damage,m.x,m.y)}else if(!asteroid.dead&&hit({x:m.x,y:m.y,r:8},asteroid,asteroid.r*.82)){m.dead=true;asteroidHit(m.damage,m.x,m.y)}}trim(missiles);
 
- for(const e of enemyShots){e.x+=e.vx*dt;e.y+=e.vy*dt;e.rot+=dt*4;if(hit(e,ship,26)){e.dead=true;shipHit(e.x,e.y)}if(e.x<-30)e.dead=true}trim(enemyShots);
+ for(const e of enemyShots){e.x+=e.vx*dt;e.y+=e.vy*dt;e.rot+=dt*4;if(hit(e,ship,isCompactLandscape()?21:26)){e.dead=true;shipHit(e.x,e.y)}if(e.x<-30)e.dead=true}trim(enemyShots);
 
  for(const bm of bossMissiles){
    bm.age+=dt;
@@ -352,7 +462,7 @@ function update(dt){
    if(bm.trail.length>18)bm.trail.shift();
    for(const t of bm.trail)t.life-=dt;
 
-   if(hit(bm,ship,25)){bm.dead=true;shipHit(bm.x,bm.y);burst(bm.x,bm.y,24,320,'#ff7a32')}
+   if(hit(bm,ship,isCompactLandscape()?20:25)){bm.dead=true;shipHit(bm.x,bm.y);burst(bm.x,bm.y,24,320,'#ff7a32')}
    if(bm.life<=0||bm.x<-60||bm.y<-80||bm.y>H+80)bm.dead=true;
  }trim(bossMissiles);
  for(const bl of bossLasers){
@@ -370,12 +480,90 @@ function drawBg(){
  for(const s of stars){ctx.globalAlpha=s.a;ctx.fillStyle='#fff3bc';ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,7);ctx.fill()}ctx.globalAlpha=1;
 }
 function drawHud(){
- ctx.save();rr(16,14,300,96,5);ctx.fillStyle='rgba(4,5,5,.72)';ctx.fill();ctx.strokeStyle='#ffc51c';ctx.lineWidth=2;ctx.stroke();
+ ctx.save();
+ const compact=isCompactLandscape();
+
+ if(compact){
+   const leftX=12,leftY=10,leftW=245,leftH=82;
+   rr(leftX,leftY,leftW,leftH,10);
+   ctx.fillStyle='rgba(4,5,5,.66)';ctx.fill();
+   ctx.strokeStyle='rgba(255,197,28,.78)';ctx.lineWidth=1.5;ctx.stroke();
+
+   ctx.font='800 10px Arial';ctx.fillStyle='#ffd95a';
+   ctx.fillText("JONAH & NOEL'S ASTEROID ASSAULT",leftX+14,leftY+16);
+
+   ctx.font='700 12px Arial';ctx.fillStyle='#9eeeff';
+   ctx.fillText('SHIELD',leftX+14,leftY+39);
+
+   const sbw=104;
+   rr(leftX+72,leftY+27,sbw,13,4);
+   ctx.fillStyle='rgba(255,255,255,.12)';ctx.fill();
+   rr(leftX+72,leftY+27,sbw*(ship.shield/ship.maxShield),13,4);
+   ctx.fillStyle='#09c8f5';ctx.fill();
+
+   ctx.fillStyle='#fff';ctx.font='700 14px Arial';
+   ctx.fillText(`${ship.shield} / ${ship.maxShield}`,leftX+184,leftY+39);
+
+   ctx.font='700 11px Arial';
+   ctx.fillText('SCORE',leftX+14,leftY+66);
+   ctx.textAlign='right';
+   ctx.fillText(String(Math.round(score)).padStart(7,'0'),leftX+leftW-14,leftY+66);
+   ctx.textAlign='left';
+
+   const centerX=W/2;
+   ctx.textAlign='center';
+   ctx.font='900 16px Arial';ctx.fillStyle='#fff';
+   ctx.fillText(boss.active?'BOSS':`LEVEL ${level}`,centerX,24);
+   ctx.font='800 13px Arial';
+   ctx.fillText(modeNames[ship.mode],centerX,42);
+
+   const pc=playerLevelColors[playerLevel];
+   ctx.font='800 10px Arial';ctx.fillStyle=pc.main;
+   ctx.fillText(`P${playerLevel} · ${playerDamageMultiplier().toFixed(2)}× ATTACK`,centerX,58);
+
+   const perk=ship.mode==='robot'?'5 SHIELDS':ship.mode==='spaceship'?'RAPID FIRE':`BLAST ${Math.max(0,ship.blastTimer).toFixed(1)}s`;
+   ctx.font='700 10px Arial';ctx.fillStyle='#ffe077';
+   ctx.fillText(perk,centerX,73);
+
+   if(boss.active){
+     const bw=Math.min(250,W*.28),bx=W-bw-12;
+     ctx.textAlign='left';ctx.font='800 11px Arial';ctx.fillStyle='#ff765f';
+     ctx.fillText('BOSS',bx,23);
+     ctx.textAlign='right';ctx.fillStyle='#fff';
+     ctx.fillText(`${Math.ceil(boss.hp)} / ${boss.maxHp}`,bx+bw,23);
+     ctx.textAlign='left';
+     rr(bx,31,bw,11,4);ctx.fillStyle='rgba(0,0,0,.68)';ctx.fill();
+     rr(bx,31,bw*Math.max(0,boss.hp/boss.maxHp),11,4);ctx.fillStyle='#df2d20';ctx.fill();
+   }else{
+     const bw=Math.min(210,W*.24),bx=W-bw-12;
+     ctx.textAlign='left';ctx.font='800 11px Arial';ctx.fillStyle='#fff';
+     ctx.fillText('ASTEROID',bx,23);
+     ctx.textAlign='right';
+     ctx.fillText(`${Math.max(0,Math.ceil(asteroid.hp))} / ${asteroid.maxHp}`,bx+bw,23);
+     ctx.textAlign='left';
+     rr(bx,31,bw,11,4);ctx.fillStyle='rgba(0,0,0,.62)';ctx.fill();
+     rr(bx,31,bw*(asteroid.dead?0:asteroid.hp/asteroid.maxHp),11,4);ctx.fillStyle='#e42b21';ctx.fill();
+   }
+
+   if(ship.missileMode>0){
+     const mw=220,mx=W/2-mw/2,my=H-36;
+     rr(mx,my,mw,25,9);ctx.fillStyle='rgba(18,12,0,.72)';ctx.fill();
+     ctx.strokeStyle='#ffc51c';ctx.stroke();
+     ctx.textAlign='center';ctx.font='800 11px Arial';ctx.fillStyle='#ffd24d';
+     ctx.fillText(`MISSILES ${ship.missileMode.toFixed(1)}s`,W/2,my+17);
+   }
+
+   ctx.restore();
+   return;
+ }
+
+ rr(16,14,300,96,5);ctx.fillStyle='rgba(4,5,5,.72)';ctx.fill();ctx.strokeStyle='#ffc51c';ctx.lineWidth=2;ctx.stroke();
  ctx.font='800 11px Arial';ctx.fillStyle='#ffd95a';ctx.fillText("JONAH & NOEL'S ASTEROID ASSAULT",36,28);
  ctx.font='700 14px Arial';ctx.fillStyle='#9eeeff';ctx.fillText('SHIELD',36,49);
  const bw=165;rr(112,36,bw,17,4);ctx.fillStyle='rgba(255,255,255,.12)';ctx.fill();rr(112,36,bw*(ship.shield/ship.maxShield),17,4);ctx.fillStyle='#09c8f5';ctx.fill();
  ctx.fillStyle='#fff';ctx.font='700 18px Arial';ctx.fillText(`${ship.shield} / ${ship.maxShield}`,286,51);
  ctx.font='700 13px Arial';ctx.fillText('SCORE',36,84);ctx.textAlign='right';ctx.fillText(String(score).padStart(7,'0'),287,84);ctx.textAlign='left';
+
  if(boss.active){
    const bw=Math.min(430,W*.42),bx=W-bw-22;
    ctx.font='800 14px Arial';ctx.fillStyle='#ff694f';ctx.fillText('BOSS: ASTEROID DESTROYER',bx,35);
@@ -385,8 +573,10 @@ function drawHud(){
    const bg=ctx.createLinearGradient(bx,0,bx+bw,0);bg.addColorStop(0,'#ffb033');bg.addColorStop(.55,'#ff573d');bg.addColorStop(1,'#d31919');ctx.fillStyle=bg;ctx.fill();
    ctx.textAlign='center';ctx.font='900 13px Arial';ctx.fillStyle='#ff5f43';ctx.fillText(`BOSS PHASE ${boss.phase}`,bx+bw/2,80);ctx.textAlign='left';
  }else{
- const barW=Math.min(240,W*.25),bx=W-barW-22;ctx.font='700 14px Arial';ctx.fillText('ASTEROID',bx,38);ctx.textAlign='right';ctx.fillText(`${Math.max(0,asteroid.hp)} / ${asteroid.maxHp}`,bx+barW,38);ctx.textAlign='left';
- rr(bx,47,barW,13,4);ctx.fillStyle='rgba(0,0,0,.6)';ctx.fill();rr(bx,47,barW*(asteroid.dead?0:asteroid.hp/asteroid.maxHp),13,4);ctx.fillStyle='#e42b21';ctx.fill();}
+   const barW=Math.min(240,W*.25),bx=W-barW-22;ctx.font='700 14px Arial';ctx.fillText('ASTEROID',bx,38);ctx.textAlign='right';ctx.fillText(`${Math.max(0,asteroid.hp)} / ${asteroid.maxHp}`,bx+barW,38);ctx.textAlign='left';
+   rr(bx,47,barW,13,4);ctx.fillStyle='rgba(0,0,0,.6)';ctx.fill();rr(bx,47,barW*(asteroid.dead?0:asteroid.hp/asteroid.maxHp),13,4);ctx.fillStyle='#e42b21';ctx.fill();
+ }
+
  ctx.textAlign='center';ctx.font='700 18px Arial';ctx.fillStyle='#fff';ctx.fillText(boss.active?'BOSS LEVEL':`LEVEL ${level}`,W/2,28);ctx.font='700 22px Arial';ctx.fillText(modeNames[ship.mode],W/2,53);
  ctx.font='600 12px Arial';ctx.fillStyle='#ffe077';
  const perk=ship.mode==='robot'?'5-SHIELD CAPACITY':ship.mode==='spaceship'?'0.25s RAPID FIRE':`BLAST IN ${Math.max(0,ship.blastTimer).toFixed(1)}s`;
@@ -418,10 +608,11 @@ function drawShip(){
    ctx.globalAlpha=.55+.45*Math.abs(Math.cos(progress*Math.PI));
    ctx.shadowBlur=34;ctx.shadowColor=playerLevelColors[playerLevel].main;
  }
+ const compact=isCompactLandscape();
  const dimensions={
-   robot:[Math.min(143,W*.1275),Math.min(143,H*.2175)],
-   spaceship:[Math.min(233,W*.2025),Math.min(70,H*.1125)],
-   hybrid:[Math.min(199,W*.1725),Math.min(105,H*.165)]
+   robot:[Math.min(compact?108:143,W*(compact?.10:.1275)),Math.min(compact?108:143,H*(compact?.23:.2175))],
+   spaceship:[Math.min(compact?175:233,W*(compact?.16:.2025)),Math.min(compact?53:70,H*(compact?.12:.1125))],
+   hybrid:[Math.min(compact?149:199,W*(compact?.14:.1725)),Math.min(compact?79:105,H*(compact?.18:.165))]
  };
  const [w,h]=dimensions[mode];ctx.drawImage(IMG[mode],-w*.48,-h*.48,w,h);
  ctx.shadowBlur=0;
@@ -474,7 +665,7 @@ function drawBoss(){
  ctx.save();
  const sx=boss.shake>0?(Math.random()-.5)*boss.shake*35:0,sy=boss.shake>0?(Math.random()-.5)*boss.shake*35:0;
  ctx.translate(boss.x+sx,boss.y+sy);
- const s=boss.r*2.2;
+ const s=boss.r*(isCompactLandscape()?1.65:2.2);
  ctx.globalAlpha=boss.defeated?Math.max(0,.9-(6.2-boss.deathTimer)*.08):1;
  ctx.drawImage(IMG.boss,-s/2,-s/2,s,s);
 
@@ -543,7 +734,7 @@ function drawBoss(){
 }
 
 function drawAsteroid(){
- if(asteroid.dead)return;ctx.save();ctx.translate(asteroid.x,asteroid.y);ctx.rotate(asteroid.phase*.05);const ratio=Math.max(.68,asteroid.hp/asteroid.maxHp),s=asteroid.r*2.35*ratio;ctx.drawImage(IMG.asteroid,-s/2,-s/2,s,s);
+ if(asteroid.dead)return;ctx.save();ctx.translate(asteroid.x,asteroid.y);ctx.rotate(asteroid.phase*.05);const ratio=Math.max(.68,asteroid.hp/asteroid.maxHp),s=asteroid.r*(isCompactLandscape()?1.75:2.35)*ratio;ctx.drawImage(IMG.asteroid,-s/2,-s/2,s,s);
  const cracks=Math.floor((1-asteroid.hp/asteroid.maxHp)*7);ctx.strokeStyle='#ff8c35';ctx.lineWidth=2;for(let i=0;i<cracks;i++){const a=i*1.4;ctx.beginPath();ctx.moveTo(Math.cos(a)*20,Math.sin(a)*20);ctx.lineTo(Math.cos(a+.2)*asteroid.r*.7,Math.sin(a+.2)*asteroid.r*.7);ctx.stroke()}ctx.restore();
 }
 function drawObjects(){
@@ -630,8 +821,13 @@ function drawTransformOverlay(){
  ctx.strokeStyle='rgba(255,221,91,.35)';ctx.lineWidth=4;ctx.beginPath();ctx.arc(ship.x,ship.y,55+p*55,0,Math.PI*2);ctx.stroke();ctx.restore();
 }
 function gameOver(){ctx.fillStyle='rgba(5,3,0,.72)';ctx.fillRect(0,0,W,H);ctx.textAlign='center';ctx.fillStyle='#fff';ctx.font='900 54px Arial';ctx.fillText('MISSION FAILED',W/2,H/2-20);ctx.font='700 18px Arial';ctx.fillStyle='#ffd04a';ctx.fillText(`Score ${score} · Player Level ${playerLevel} · Tap or press Enter to restart`,W/2,H/2+24);ctx.textAlign='left'}
-function loop(now){const dt=Math.min(.033,(now-last)/1000);last=now;update(dt);drawBg();drawHud();drawObjects();drawAsteroid();drawBoss();drawShip();drawTransformOverlay();if(state==='gameover')gameOver();requestAnimationFrame(loop)}
+function loop(now){const dt=orientationPaused?0:Math.min(.033,(now-last)/1000);last=now;update(dt);drawBg();drawHud();drawObjects();drawAsteroid();drawBoss();drawShip();drawTransformOverlay();if(state==='gameover')gameOver();requestAnimationFrame(loop)}
 transformBtn.innerHTML='MODE<br>HYBRID';
+if(screen.orientation && screen.orientation.lock){
+  document.addEventListener('fullscreenchange',()=>{
+    if(document.fullscreenElement)screen.orientation.lock('landscape').catch(()=>{});
+  });
+}
 requestAnimationFrame(loop);
 })();
 </script>
