@@ -1,0 +1,25 @@
+EVELYN'S EXISTING GAME FILES GO IN THIS FOLDER
+
+Before replacing the repository root index.html:
+
+1. Copy the CURRENT root files for Evelyn's game into this folder:
+   - current index.html
+   - game.js
+   - style.css
+   - any files used only by that game
+
+2. Copy the CURRENT root assets folder into:
+   games/feed-the-snake/assets/
+
+3. Update Evelyn's copied index.html paths only if they use absolute paths.
+   Typical paths such as:
+     style.css
+     game.js
+     assets/picture.png
+   will continue to work without changes when all files are copied together.
+
+4. Test:
+   https://yijinnchen16.github.io/evelyn-games/games/feed-the-snake/
+
+This package deliberately does not contain or overwrite your existing Evelyn game,
+because those current repository files were not available in this chat.
